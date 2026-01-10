@@ -63,7 +63,6 @@ const Sidebar = ({
   onClose,
   routes,
   currentPath,
-  user,
   logout,
   themeColors,
 }) => {
@@ -108,9 +107,9 @@ const Sidebar = ({
           style={{ borderColor: themeColors.border }}
         >
           <div className="flex items-center">
-            <div className="w-25 h-25 rounded-lg flex items-center justify-center mr-3 bg-white p-1">
+            <div className="w-35 h-25 rounded-lg flex items-center justify-center mr-3  p-1">
               <img
-                src="KS2-Logo.png"
+                src="logo.png"
                 alt="KS4 PharmaNet Logo"
                 className="w-full h-full object-contain"
               />
@@ -145,41 +144,8 @@ const Sidebar = ({
           </nav>
         </div>
 
-        {/* User Section */}
-        <div
-          className="p-4 border-t"
-          style={{ borderColor: themeColors.border }}
-        >
-          <div
-            className="flex items-center mb-4 p-3 rounded-lg"
-            style={{ backgroundColor: themeColors.background }}
-          >
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center mr-3 border"
-              style={{
-                backgroundColor: themeColors.primary,
-                color: themeColors.onPrimary,
-                borderColor: themeColors.border,
-              }}
-              aria-hidden="true"
-            >
-              <FaUserCircle className="text-lg" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p
-                className="font-medium text-sm truncate"
-                style={{ color: themeColors.text }}
-              >
-                {user?.name || "Pharmacy Manager"}
-              </p>
-              <p
-                className="text-xs opacity-75 truncate"
-                style={{ color: themeColors.textSecondary }}
-              >
-                {user?.role || "Pharmacist"}
-              </p>
-            </div>
-          </div>
+        {/* Logout Button */}
+        <div className="p-4">
           <button
             onClick={logout}
             className="w-full py-3 px-4 rounded-lg text-center transition-all duration-200 flex items-center justify-center gap-2 border hover:shadow-md"

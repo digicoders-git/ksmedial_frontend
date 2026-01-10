@@ -154,12 +154,7 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h1
-            className="text-2xl font-bold"
-            style={{ color: themeColors.text }}
-          >
-            E-commerce Overview
-          </h1>
+         
           <p
             className="text-sm mt-1 opacity-75"
             style={{ color: themeColors.text }}
