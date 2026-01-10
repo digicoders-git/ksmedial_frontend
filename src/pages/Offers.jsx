@@ -324,13 +324,7 @@ export default function Offers() {
             <FaTags />
             Offers & Coupons
           </h1>
-          <p
-            className="text-sm mt-1 opacity-75"
-            style={{ color: themeColors.text }}
-          >
-            Manage discount codes and promotional offers for your
-            store.
-          </p>
+         
         </div>
 
         {/* Controls */}

@@ -215,12 +215,7 @@ export default function Orders() {
             <FaShoppingCart />
             Orders
           </h1>
-          <p
-            className="text-sm mt-1 opacity-75"
-            style={{ color: themeColors.text }}
-          >
-            View and manage all customer orders.
-          </p>
+         
         </div>
 
         {/* Controls */}

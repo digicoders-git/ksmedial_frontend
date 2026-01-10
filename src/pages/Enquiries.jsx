@@ -202,12 +202,7 @@ export default function Enquiries() {
             <FaEnvelopeOpenText />
             Customer Enquiries
           </h1>
-          <p
-            className="text-sm mt-1 opacity-75"
-            style={{ color: themeColors.text }}
-          >
-            View and manage contact form enquiries from your website.
-          </p>
+         
         </div>
 
         {/* Controls */}

@@ -587,13 +587,7 @@ export default function Products() {
             <FaBoxOpen />
             Products
           </h1>
-          <p
-            className="text-sm mt-1 opacity-75"
-            style={{ color: themeColors.text }}
-          >
-            Manage your pharmaceutical products, pricing, categories and
-            images.
-          </p>
+          
         </div>
 
         {/* Right controls */}

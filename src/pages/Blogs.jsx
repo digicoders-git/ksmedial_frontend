@@ -432,12 +432,7 @@ export default function Blogs() {
             <FaBlog />
             Blog Management
           </h1>
-          <p
-            className="text-sm mt-1 opacity-75"
-            style={{ color: themeColors.text }}
-          >
-            Create, manage and publish blog posts for your website.
-          </p>
+         
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

@@ -367,12 +367,7 @@ export default function Sliders() {
             <FaImages />
             Homepage Sliders
           </h1>
-          <p
-            className="text-sm mt-1 opacity-75"
-            style={{ color: themeColors.text }}
-          >
-            Manage home page banner sliders with images, text and links.
-          </p>
+         
         </div>
 
         {/* Controls */}

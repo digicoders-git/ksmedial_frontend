@@ -326,12 +326,7 @@ export default function Categories() {
             <FaBox />
             Categories
           </h1>
-          <p
-            className="text-sm mt-1 opacity-75"
-            style={{ color: themeColors.text }}
-          >
-            Manage pharmaceutical categories for your medical store.
-          </p>
+         
         </div>
 
         {/* Right controls */}
