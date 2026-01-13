@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { FaEye, FaTimes, FaCheck, FaFileAlt, FaUser, FaIdCard, FaCheckCircle } from "react-icons/fa";
+import { FaEye, FaTimes, FaCheck, FaFileAlt, FaUser, FaIdCard, FaCheckCircle, FaHistory, FaFileImage } from "react-icons/fa";
 import { toast } from "sonner";
 import { API_ENDPOINTS, buildUrl } from "../config/api";
 
