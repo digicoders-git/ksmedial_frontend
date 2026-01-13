@@ -10,6 +10,10 @@ import {
   FaSyncAlt,
   FaEnvelopeOpenText,
   FaTags,
+  FaNetworkWired,
+  FaCoins,
+  FaTasks,
+  FaWallet,
 } from "react-icons/fa";
 import {
   LineChart,
@@ -23,6 +27,7 @@ import {
   Bar,
 } from "recharts";
 import { getDashboardOverview } from "../apis/dashboard";
+import { Link } from "react-router-dom";
 
 // ---------- helpers ----------
 const fmtNum = (n) =>
@@ -45,7 +50,49 @@ export default function Dashboard() {
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(""); 
+
+  // MLM Data State (Dynamic)
+  const [mlmStats, setMlmStats] = useState({
+    totalReferrals: 0,
+    activeReferrals: 0,
+    totalEarnings: 0,
+    availableBalance: 0,
+    pendingTasks: 0,
+    completedTasks: 0,
+    thisMonthEarnings: 0,
+    pendingWithdrawals: 0
+  });
+  const [mlmLoading, setMlmLoading] = useState(true);
+
+  // Fetch MLM Data
+  const fetchMLMData = async () => {
+    try {
+      setMlmLoading(true);
+      // TODO: Get userId from auth context
+      const userId = "USER001";
+      
+      const response = await fetch(`http://localhost:5000/api/mlm/dashboard/${userId}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMlmStats({
+          totalReferrals: data.totalReferrals || 0,
+          activeReferrals: data.activeReferrals || 0,
+          totalEarnings: data.totalEarnings || 0,
+          availableBalance: data.availableBalance || 0,
+          pendingTasks: 0, // TODO: Add tasks API
+          completedTasks: 0, // TODO: Add tasks API
+          thisMonthEarnings: data.monthlyEarnings || 0,
+          pendingWithdrawals: data.pendingWithdrawal || 0
+        });
+      }
+    } catch (error) {
+      console.error("Fetch MLM data error:", error);
+    } finally {
+      setMlmLoading(false);
+    }
+  };
 
   const fetchOverview = async (isRefresh = false) => {
     try {
@@ -69,6 +116,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchOverview(false);
+    fetchMLMData(); // Fetch MLM data on mount
   }, []);
 
   const summary = overview?.summaryCards || {};
@@ -144,6 +192,42 @@ export default function Dashboard() {
       description: `Unread enquiries: ${fmtNum(
         summary.unreadEnquiries
       )} • Active offers: ${fmtNum(summary.activeOffers)}`,
+    },
+  ];
+
+  // MLM Summary Cards
+  const mlmSummaryCards = [
+    {
+      title: "Total Referrals",
+      value: mlmStats.totalReferrals,
+      icon: FaUsers,
+      color: "text-blue-600",
+      bgColor: "bg-blue-100",
+      link: "/referrals"
+    },
+    {
+      title: "MLM Earnings",
+      value: `₹${mlmStats.totalEarnings.toLocaleString()}`,
+      icon: FaCoins,
+      color: "text-green-600",
+      bgColor: "bg-green-100",
+      link: "/earnings"
+    },
+    {
+      title: "Available Balance",
+      value: `₹${mlmStats.availableBalance.toLocaleString()}`,
+      icon: FaWallet,
+      color: "text-purple-600",
+      bgColor: "bg-purple-100",
+      link: "/withdrawal"
+    },
+    {
+      title: "Pending Tasks",
+      value: mlmStats.pendingTasks,
+      icon: FaTasks,
+      color: "text-orange-600",
+      bgColor: "bg-orange-100",
+      link: "/tasks"
     },
   ];
 
@@ -234,50 +318,109 @@ export default function Dashboard() {
       {/* Rest of content only when we have data */}
       {!loading && overview && (
         <>
-          {/* Summary cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {summaryCards.map((stat, index) => (
-              <div
-                key={index}
-                className="p-6 rounded-xl border transition-all duration-300 hover:shadow-lg group"
+          {/* MLM Quick Overview */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold" style={{ color: themeColors.text }}>
+                MLM Overview
+              </h2>
+              <Link 
+                to="/mlm-dashboard"
+                className="text-sm px-4 py-2 rounded-lg border hover:shadow-md transition-all"
                 style={{
-                  backgroundColor: themeColors.surface,
-                  borderColor: themeColors.border,
+                  backgroundColor: themeColors.primary,
+                  color: "white",
+                  borderColor: themeColors.primary
                 }}
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p
-                      className="text-sm font-medium mb-1 opacity-75"
-                      style={{ color: themeColors.text }}
-                    >
-                      {stat.title}
-                    </p>
-                    <p
-                      className="text-2xl font-bold mb-2"
-                      style={{ color: themeColors.primary }}
-                    >
-                      {stat.value}
-                    </p>
-                    <p
-                      className="text-xs opacity-60"
-                      style={{ color: themeColors.text }}
-                    >
-                      {stat.description}
-                    </p>
+                View MLM Dashboard
+              </Link>
+            </div>
+            {mlmLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-3 text-gray-600">Loading MLM data...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {mlmSummaryCards.map((stat, index) => (
+                <Link
+                  key={index}
+                  to={stat.link}
+                  className="p-6 rounded-xl border transition-all duration-300 hover:shadow-lg group block"
+                  style={{
+                    backgroundColor: themeColors.surface,
+                    borderColor: themeColors.border,
+                  }}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium mb-1 opacity-75" style={{ color: themeColors.text }}>
+                        {stat.title}
+                      </p>
+                      <p className="text-2xl font-bold mb-2" style={{ color: themeColors.primary }}>
+                        {stat.value}
+                      </p>
+                    </div>
+                    <div className={`p-3 rounded-xl group-hover:scale-110 transition-transform duration-300 ${stat.bgColor}`}>
+                      <stat.icon className={`text-lg ${stat.color}`} />
+                    </div>
                   </div>
-                  <div
-                    className="p-3 rounded-xl group-hover:scale-110 transition-transform duration-300"
-                    style={{ backgroundColor: themeColors.primary + "15" }}
-                  >
-                    <stat.icon
-                      className="text-lg"
-                      style={{ color: themeColors.primary }}
-                    />
+                </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* E-commerce Summary cards */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4" style={{ color: themeColors.text }}>
+              KS4 Overview
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {summaryCards.map((stat, index) => (
+                <div
+                  key={index}
+                  className="p-6 rounded-xl border transition-all duration-300 hover:shadow-lg group"
+                  style={{
+                    backgroundColor: themeColors.surface,
+                    borderColor: themeColors.border,
+                  }}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <p
+                        className="text-sm font-medium mb-1 opacity-75"
+                        style={{ color: themeColors.text }}
+                      >
+                        {stat.title}
+                      </p>
+                      <p
+                        className="text-2xl font-bold mb-2"
+                        style={{ color: themeColors.primary }}
+                      >
+                        {stat.value}
+                      </p>
+                      <p
+                        className="text-xs opacity-60"
+                        style={{ color: themeColors.text }}
+                      >
+                        {stat.description}
+                      </p>
+                    </div>
+                    <div
+                      className="p-3 rounded-xl group-hover:scale-110 transition-transform duration-300"
+                      style={{ backgroundColor: themeColors.primary + "15" }}
+                    >
+                      <stat.icon
+                        className="text-lg"
+                        style={{ color: themeColors.primary }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           {/* Charts Row 1: Orders & Revenue (last 7 days) */}

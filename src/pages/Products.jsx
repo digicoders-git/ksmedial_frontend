@@ -1239,7 +1239,7 @@ export default function Products() {
 
       {/* Add / Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40">
           <div
             className="w-full max-w-3xl mx-4 rounded-2xl shadow-lg border max-h-[90vh] overflow-hidden flex flex-col"
             style={{
@@ -1832,7 +1832,7 @@ export default function Products() {
 
       {/* FULL VIEW MODAL */}
       {viewProduct && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
           <div
             className="w-full max-w-4xl mx-4 rounded-2xl shadow-lg border max-h-[90vh] overflow-hidden flex flex-col"
             style={{
