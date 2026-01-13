@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { FaTasks, FaCoins, FaClock, FaCheck, FaPlay, FaEye } from "react-icons/fa";
 import { toast } from "sonner";
+import { useTheme } from "../context/ThemeContext";
 
 const Tasks = () => {
+  const { theme, themeColors } = useTheme();
   const [tasks, setTasks] = useState([
     {
       id: 1,
@@ -89,7 +91,7 @@ const Tasks = () => {
 
   const getStatusColor = (status) => {
     switch(status) {
-      case "completed": return "bg-green-100 text-green-800";
+      case "completed": return theme === 'dark' ? "bg-red-900/30 text-red-500" : "bg-green-100 text-green-800";
       case "in-progress": return "bg-blue-100 text-blue-800";
       case "available": return "bg-yellow-100 text-yellow-800";
       case "locked": return "bg-gray-100 text-gray-800";
@@ -99,7 +101,7 @@ const Tasks = () => {
 
   const getDifficultyColor = (difficulty) => {
     switch(difficulty) {
-      case "Easy": return "bg-green-100 text-green-800";
+      case "Easy": return theme === 'dark' ? "bg-red-900/30 text-red-500" : "bg-green-100 text-green-800";
       case "Medium": return "bg-yellow-100 text-yellow-800";
       case "Hard": return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-800";
@@ -133,48 +135,48 @@ const Tasks = () => {
     .reduce((sum, task) => sum + task.reward, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen p-6" style={{ backgroundColor: themeColors.background }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Available Tasks</h1>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: themeColors.text }}>Available Tasks</h1>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Total Tasks</p>
-                <p className="text-2xl font-bold text-blue-600">{tasks.length}</p>
+                <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>Total Tasks</p>
+                <p className="text-2xl font-bold" style={{ color: themeColors.info }}>{tasks.length}</p>
               </div>
-              <FaTasks className="text-2xl text-blue-600" />
+              <FaTasks className="text-2xl" style={{ color: themeColors.info }} />
             </div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Completed</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>Completed</p>
+                <p className="text-2xl font-bold" style={{ color: theme === 'dark' ? '#db2b1c' : '#166534' }}>
                   {tasks.filter(t => t.status === "completed").length}
                 </p>
               </div>
-              <FaCheck className="text-2xl text-green-600" />
+              <FaCheck className="text-2xl" style={{ color: theme === 'dark' ? '#db2b1c' : '#166534' }} />
             </div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Total Earned</p>
+                <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>Total Earned</p>
                 <p className="text-2xl font-bold text-purple-600">₹{totalEarned.toLocaleString()}</p>
               </div>
               <FaCoins className="text-2xl text-purple-600" />
             </div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Available Rewards</p>
+                <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>Available Rewards</p>
                 <p className="text-2xl font-bold text-orange-600">₹{availableRewards.toLocaleString()}</p>
               </div>
               <FaCoins className="text-2xl text-orange-600" />
@@ -183,12 +185,13 @@ const Tasks = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl p-6 shadow-lg mb-8">
+        <div className="rounded-xl p-6 shadow-lg mb-8 border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
+              style={{ backgroundColor: themeColors.background, color: themeColors.text, borderColor: themeColors.border }}
             >
               <option value="all">All Tasks</option>
               <option value="available">Available</option>
@@ -197,11 +200,12 @@ const Tasks = () => {
               <option value="locked">Locked</option>
             </select>
             <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
+              style={{ backgroundColor: themeColors.background, color: themeColors.text, borderColor: themeColors.border }}
             >
-              <option value="all">All Categories</option>
+              <option value="all" style={{ backgroundColor: themeColors.background }}>All Categories</option>
               <option value="Profile">Profile</option>
               <option value="Referral">Referral</option>
               <option value="Daily">Daily</option>
@@ -215,11 +219,11 @@ const Tasks = () => {
         {/* Tasks Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTasks.map((task) => (
-            <div key={task.id} className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+            <div key={task.id} className="rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">{task.title}</h3>
-                  <p className="text-gray-600 text-sm mb-3">{task.description}</p>
+                  <h3 className="text-lg font-semibold mb-2" style={{ color: themeColors.text }}>{task.title}</h3>
+                  <p className="text-sm mb-3" style={{ color: themeColors.textSecondary }}>{task.description}</p>
                 </div>
               </div>
 
@@ -237,7 +241,7 @@ const Tasks = () => {
 
               {task.progress !== undefined && (
                 <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <div className="flex justify-between text-sm mb-1" style={{ color: themeColors.textSecondary }}>
                     <span>Progress</span>
                     <span>{task.progress}/{task.target}</span>
                   </div>
@@ -251,11 +255,11 @@ const Tasks = () => {
               )}
 
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center text-gray-600 text-sm">
+                <div className="flex items-center text-sm" style={{ color: themeColors.textSecondary }}>
                   <FaClock className="mr-1" />
                   {task.timeRequired}
                 </div>
-                <div className="flex items-center text-green-600 font-semibold">
+                <div className="flex items-center font-semibold" style={{ color: theme === 'dark' ? '#db2b1c' : '#166534' }}>
                   <FaCoins className="mr-1" />
                   ₹{task.reward}
                 </div>
@@ -280,7 +284,8 @@ const Tasks = () => {
                 {task.status === "in-progress" && (
                   <button
                     onClick={() => handleCompleteTask(task.id)}
-                    className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 hover:opacity-90"
+                    style={{ backgroundColor: theme === 'dark' ? '#db2b1c' : '#166534' }}
                   >
                     <FaCheck className="text-sm" />
                     Complete

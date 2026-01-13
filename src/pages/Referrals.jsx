@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { FaUsers, FaEye, FaCoins, FaCalendar, FaSearch } from "react-icons/fa";
 import { toast } from "sonner";
 import { API_ENDPOINTS, isValidObjectId } from "../config/api";
+import { useTheme } from "../context/ThemeContext";
 
 const Referrals = () => {
+  const { theme, themeColors } = useTheme();
   const [referrals, setReferrals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -20,42 +22,42 @@ const Referrals = () => {
 
   // Fetch referrals data
   useEffect(() => {
-    fetchReferrals();
-  }, []);
-
-  const fetchReferrals = async () => {
-    try {
-      setLoading(true);
-      // TODO: Get userId from auth context
-      const userId = "65a1b2c3d4e5f6a7b8c9d0e1"; // Replace with actual user ID from auth
-      
-      if (!isValidObjectId(userId)) {
-        setLoading(false);
-        return;
-      }
-      
-      const response = await fetch(API_ENDPOINTS.MLM.REFERRALS(userId));
-      const text = await response.text();
-      let data;
+    const fetchReferralsData = async () => {
       try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error("Server returned an invalid response");
+        setLoading(true);
+        // TODO: Get userId from auth context
+        const userId = "65a1b2c3d4e5f6a7b8c9d0e1"; // Replace with actual user ID from auth
+        
+        if (!isValidObjectId(userId)) {
+          setLoading(false);
+          return;
+        }
+        
+        const response = await fetch(API_ENDPOINTS.MLM.REFERRALS(userId));
+        const text = await response.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error("Server returned an invalid response");
+        }
+        
+        if (response.ok) {
+          setReferrals(data.referrals || []);
+          calculateStats(data.referrals || []);
+        } else {
+          toast.error(data.message || "Failed to fetch referrals");
+        }
+      } catch (error) {
+        console.error("Fetch referrals error:", error);
+        toast.error(error.message || "Failed to fetch referrals");
+      } finally {
+        setLoading(false);
       }
-      
-      if (response.ok) {
-        setReferrals(data.referrals || []);
-        calculateStats(data.referrals || []);
-      } else {
-        toast.error(data.message || "Failed to fetch referrals");
-      }
-    } catch (error) {
-      console.error("Fetch referrals error:", error);
-      toast.error(error.message || "Failed to fetch referrals");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchReferralsData();
+  }, []);
 
   const calculateStats = (referralsList) => {
     const total = referralsList.length;
@@ -84,25 +86,26 @@ const Referrals = () => {
   const getLevelColor = (level) => {
     switch(level) {
       case 1: return "bg-blue-100 text-blue-800";
-      case 2: return "bg-green-100 text-green-800";
+      case 2: return theme === 'dark' ? "bg-red-900/30 text-red-500" : "bg-green-100 text-green-800";
       case 3: return "bg-purple-100 text-purple-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
 
   const getStatusColor = (isActive) => {
-    return isActive 
-      ? "bg-green-100 text-green-800" 
-      : "bg-red-100 text-red-800";
+    if (isActive) {
+      return theme === 'dark' ? "bg-red-900/30 text-red-500" : "bg-green-100 text-green-800";
+    }
+    return "bg-red-100 text-red-800";
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen p-6" style={{ backgroundColor: themeColors.background }}>
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-gray-600">Loading referrals...</span>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: themeColors.primary }}></div>
+            <span className="ml-3" style={{ color: themeColors.textSecondary }}>Loading referrals...</span>
           </div>
         </div>
       </div>
@@ -112,14 +115,14 @@ const Referrals = () => {
   const testUserId = "65a1b2c3d4e5f6a7b8c9d0e1";
   if (!isValidObjectId(testUserId)) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md">
+      <div className="min-h-screen p-6 flex items-center justify-center" style={{ backgroundColor: themeColors.background }}>
+        <div className="p-8 rounded-xl shadow-lg text-center max-w-md" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
           <div className="text-red-500 text-5xl mb-4 text-center flex justify-center">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Invalid Session</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-2xl font-bold mb-2" style={{ color: themeColors.text }}>Invalid Session</h2>
+          <p className="mb-6" style={{ color: themeColors.textSecondary }}>
             Your User ID format is invalid (<b>{testUserId}</b>). MongoDB expects a 24-character hex ID.
           </p>
-          <div className="bg-blue-50 p-4 rounded-lg text-left text-sm text-blue-800 mb-6">
+          <div className="p-4 rounded-lg text-left text-sm mb-6" style={{ backgroundColor: themeColors.primary + "10", color: themeColors.primary }}>
             <p className="font-bold mb-1">How to fix:</p>
             <ol className="list-decimal ml-4">
               <li>Log in with a real account</li>
@@ -128,7 +131,8 @@ const Referrals = () => {
           </div>
           <button 
             onClick={() => window.location.reload()}
-            className="w-full bg-[#007242] text-white py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+            className="w-full text-white py-2 rounded-lg font-medium transition-colors hover:opacity-90"
+            style={{ backgroundColor: themeColors.primary }}
           >
             Retry Connection
           </button>
@@ -138,135 +142,130 @@ const Referrals = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen p-6" style={{ backgroundColor: themeColors.background }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">My Referrals</h1>
-          <p className="text-gray-600">Track and manage your referral network</p>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: themeColors.text }}>My Referrals</h1>
+          <p style={{ color: themeColors.textSecondary }}>Track and manage your referral network</p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Total Referrals</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.totalReferrals}</p>
+                <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>Total Referrals</p>
+                <p className="text-2xl font-bold" style={{ color: themeColors.text }}>{stats.totalReferrals}</p>
               </div>
-              <FaUsers className="text-2xl text-blue-600" />
+              <FaUsers className="text-2xl text-blue-500" />
             </div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Active Referrals</p>
-                <p className="text-2xl font-bold text-green-600">{stats.activeReferrals}</p>
+                <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>Active Referrals</p>
+                <p className="text-2xl font-bold" style={{ color: theme === 'dark' ? '#db2b1c' : '#166534' }}>{stats.activeReferrals}</p>
               </div>
-              <FaUsers className="text-2xl text-green-600" />
+              <FaUsers className={theme === 'dark' ? 'text-2xl text-red-500' : 'text-2xl text-green-600'} />
             </div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Total Earnings</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  ₹{stats.totalEarnings.toLocaleString()}
-                </p>
+                <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>Total Earnings</p>
+                <p className="text-2xl font-bold" style={{ color: theme === 'dark' ? '#db2b1c' : '#166534' }}>₹{stats.totalEarnings.toLocaleString()}</p>
               </div>
-              <FaCoins className="text-2xl text-purple-600" />
+              <FaCoins className={theme === 'dark' ? 'text-2xl text-red-500' : 'text-2xl text-green-600'} />
             </div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">This Month</p>
-                <p className="text-2xl font-bold text-orange-600">
+                <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>This Month</p>
+                <p className="text-2xl font-bold" style={{ color: theme === 'dark' ? '#f97316' : '#ea580c' }}>
                   ₹{stats.monthlyEarnings.toLocaleString()}
                 </p>
               </div>
-              <FaCalendar className="text-2xl text-orange-600" />
+              <FaCalendar className="text-2xl" style={{ color: theme === 'dark' ? '#f97316' : '#ea580c' }} />
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl p-6 shadow-lg mb-8">
+        <div className="rounded-xl p-6 shadow-lg mb-8 border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: themeColors.textSecondary }} />
               <input
                 type="text"
                 placeholder="Search by name or email..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50"
+                style={{ backgroundColor: themeColors.background, borderColor: themeColors.border, color: themeColors.text }}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50"
+              style={{ backgroundColor: themeColors.background, borderColor: themeColors.border, color: themeColors.text }}
               value={levelFilter}
               onChange={(e) => setLevelFilter(e.target.value)}
             >
-              <option value="all">All Levels</option>
-              <option value="1">Level 1</option>
-              <option value="2">Level 2</option>
-              <option value="3">Level 3</option>
+              <option value="all" style={{ backgroundColor: themeColors.surface }}>All Levels</option>
+              <option value="1" style={{ backgroundColor: themeColors.surface }}>Level 1</option>
+              <option value="2" style={{ backgroundColor: themeColors.surface }}>Level 2</option>
+              <option value="3" style={{ backgroundColor: themeColors.surface }}>Level 3</option>
             </select>
             <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50"
+              style={{ backgroundColor: themeColors.background, borderColor: themeColors.border, color: themeColors.text }}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="all" style={{ backgroundColor: themeColors.surface }}>All Status</option>
+              <option value="active" style={{ backgroundColor: themeColors.surface }}>Active</option>
+              <option value="inactive" style={{ backgroundColor: themeColors.surface }}>Inactive</option>
             </select>
           </div>
         </div>
 
         {/* Referrals Table */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="rounded-xl shadow-lg overflow-hidden border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead style={{ backgroundColor: themeColors.background }}>
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Referral Details
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Level
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Join Date
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Earnings
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  {[
+                    "Referral Details",
+                    "Level",
+                    "Status",
+                    "Join Date",
+                    "Earnings",
+                    "Actions"
+                  ].map((header) => (
+                    <th key={header} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: themeColors.textSecondary }}>
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y" style={{ borderColor: themeColors.border }}>
                 {filteredReferrals.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="px-6 py-12 text-center">
-                      <FaUsers className="mx-auto text-4xl text-gray-400 mb-4" />
-                      <p className="text-gray-500">No referrals found matching your criteria</p>
+                      <FaUsers className="mx-auto text-4xl mb-4 opacity-50" style={{ color: themeColors.textSecondary }} />
+                      <p style={{ color: themeColors.textSecondary }}>No referrals found matching your criteria</p>
                     </td>
                   </tr>
                 ) : (
                   filteredReferrals.map((referral) => (
-                    <tr key={referral.id} className="hover:bg-gray-50">
+                    <tr key={referral.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{referral.name}</div>
-                          <div className="text-sm text-gray-500">{referral.email}</div>
-                          <div className="text-sm text-gray-500">{referral.phone}</div>
+                          <div className="text-sm font-medium" style={{ color: themeColors.text }}>{referral.name}</div>
+                          <div className="text-sm" style={{ color: themeColors.textSecondary }}>{referral.email}</div>
+                          <div className="text-sm" style={{ color: themeColors.textSecondary }}>{referral.phone}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -279,10 +278,10 @@ const Referrals = () => {
                           {referral.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: themeColors.text }}>
                         {new Date(referral.joinedAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: theme === 'dark' ? '#db2b1c' : '#16a34a' }}>
                         ₹{referral.totalEarned.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -307,12 +306,13 @@ const Referrals = () => {
         {/* Referral Details Modal */}
         {showModal && selectedReferral && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto shadow-2xl border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-800">Referral Details</h3>
+                <h3 className="text-xl font-semibold" style={{ color: themeColors.text }}>Referral Details</h3>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-2xl hover:opacity-70 transition-opacity"
+                  style={{ color: themeColors.textSecondary }}
                 >
                   ×
                 </button>
@@ -320,34 +320,34 @@ const Referrals = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Personal Information */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-800 mb-3">Personal Information</h4>
+                <div className="rounded-lg p-4" style={{ backgroundColor: themeColors.background }}>
+                  <h4 className="font-semibold mb-3" style={{ color: themeColors.text }}>Personal Information</h4>
                   <div className="space-y-2">
                     <div>
-                      <span className="text-sm text-gray-600">Name:</span>
-                      <p className="font-medium">{selectedReferral.name}</p>
+                      <span className="text-sm" style={{ color: themeColors.textSecondary }}>Name:</span>
+                      <p className="font-medium" style={{ color: themeColors.text }}>{selectedReferral.name}</p>
                     </div>
                     <div>
-                      <span className="text-sm text-gray-600">Email:</span>
-                      <p className="font-medium">{selectedReferral.email}</p>
+                      <span className="text-sm" style={{ color: themeColors.textSecondary }}>Email:</span>
+                      <p className="font-medium" style={{ color: themeColors.text }}>{selectedReferral.email}</p>
                     </div>
                     <div>
-                      <span className="text-sm text-gray-600">Phone:</span>
-                      <p className="font-medium">{selectedReferral.phone}</p>
+                      <span className="text-sm" style={{ color: themeColors.textSecondary }}>Phone:</span>
+                      <p className="font-medium" style={{ color: themeColors.text }}>{selectedReferral.phone}</p>
                     </div>
                     <div>
-                      <span className="text-sm text-gray-600">Join Date:</span>
-                      <p className="font-medium">{new Date(selectedReferral.joinedAt).toLocaleDateString()}</p>
+                      <span className="text-sm" style={{ color: themeColors.textSecondary }}>Join Date:</span>
+                      <p className="font-medium" style={{ color: themeColors.text }}>{new Date(selectedReferral.joinedAt).toLocaleDateString()}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Status & Level */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-800 mb-3">Status & Level</h4>
+                <div className="rounded-lg p-4" style={{ backgroundColor: themeColors.background }}>
+                  <h4 className="font-semibold mb-3" style={{ color: themeColors.text }}>Status & Level</h4>
                   <div className="space-y-3">
                     <div>
-                      <span className="text-sm text-gray-600">Level:</span>
+                      <span className="text-sm" style={{ color: themeColors.textSecondary }}>Level:</span>
                       <div className="mt-1">
                         <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getLevelColor(selectedReferral.level)}`}>
                           Level {selectedReferral.level}
@@ -355,7 +355,7 @@ const Referrals = () => {
                       </div>
                     </div>
                     <div>
-                      <span className="text-sm text-gray-600">Status:</span>
+                      <span className="text-sm" style={{ color: themeColors.textSecondary }}>Status:</span>
                       <div className="mt-1">
                         <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(selectedReferral.isActive)}`}>
                           {selectedReferral.isActive ? "Active" : "Inactive"}
@@ -366,16 +366,16 @@ const Referrals = () => {
                 </div>
 
                 {/* Earnings Information */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-800 mb-3">Earnings</h4>
+                <div className="rounded-lg p-4" style={{ backgroundColor: themeColors.background }}>
+                  <h4 className="font-semibold mb-3" style={{ color: themeColors.text }}>Earnings</h4>
                   <div className="space-y-2">
                     <div>
-                      <span className="text-sm text-gray-600">Total Earnings:</span>
-                      <p className="font-medium text-green-600">₹{selectedReferral.totalEarned.toLocaleString()}</p>
+                      <span className="text-sm" style={{ color: themeColors.textSecondary }}>Total Earnings:</span>
+                      <p className="font-medium" style={{ color: theme === 'dark' ? '#db2b1c' : '#16a34a' }}>₹{selectedReferral.totalEarned.toLocaleString()}</p>
                     </div>
                     <div>
-                      <span className="text-sm text-gray-600">Commission Rate:</span>
-                      <p className="font-medium">
+                      <span className="text-sm" style={{ color: themeColors.textSecondary }}>Commission Rate:</span>
+                      <p className="font-medium" style={{ color: themeColors.text }}>
                         {selectedReferral.level === 1 ? "10%" : selectedReferral.level === 2 ? "5%" : "2%"}
                       </p>
                     </div>
@@ -383,12 +383,12 @@ const Referrals = () => {
                 </div>
 
                 {/* User ID */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-800 mb-3">User ID</h4>
+                <div className="rounded-lg p-4" style={{ backgroundColor: themeColors.background }}>
+                  <h4 className="font-semibold mb-3" style={{ color: themeColors.text }}>User ID</h4>
                   <div className="space-y-2">
                     <div>
-                      <span className="text-sm text-gray-600">User ID:</span>
-                      <p className="font-medium font-mono">{selectedReferral.userId}</p>
+                      <span className="text-sm" style={{ color: themeColors.textSecondary }}>User ID:</span>
+                      <p className="font-medium font-mono" style={{ color: themeColors.text }}>{selectedReferral.userId}</p>
                     </div>
                   </div>
                 </div>
@@ -397,7 +397,8 @@ const Referrals = () => {
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                  className="px-4 py-2 border rounded-lg transition-colors"
+                  style={{ backgroundColor: themeColors.background, borderColor: themeColors.border, color: themeColors.text }}
                 >
                   Close
                 </button>

@@ -23,16 +23,8 @@ import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
 
 // ---------- helpers ----------
-const fmtNum = (n) =>
-  typeof n === "number" ? n.toLocaleString("en-IN") : n ?? "-";
-
 const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString("en-IN") : "-";
-
-const fmtCurrency = (n) =>
-  typeof n === "number"
-    ? `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
-    : n ?? "-";
 
 const emptyForm = {
   name: "",

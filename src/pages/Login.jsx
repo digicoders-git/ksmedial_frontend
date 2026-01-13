@@ -134,11 +134,13 @@ const Login = () => {
               value={credentials.adminId}
               onChange={handleChange}
               required
-              className="w-full p-3 rounded-lg border text-sm focus:outline-[#017343]  transition-all"
+              className="w-full p-3 rounded-lg border text-sm transition-all focus:ring-2 focus:ring-offset-2"
               style={{
                 backgroundColor: themeColors.background,
                 color: themeColors.text,
                 borderColor: themeColors.border,
+                outlineColor: themeColors.primary,
+                '--tw-ring-color': themeColors.primary
               }}
               placeholder="Enter pharmacy admin ID"
               disabled={isLoading}
@@ -161,11 +163,13 @@ const Login = () => {
               value={credentials.password}
               onChange={handleChange}
               required
-              className="w-full p-3 rounded-lg border text-sm focus:outline-[#017343]  transition-all"
+              className="w-full p-3 rounded-lg border text-sm transition-all focus:ring-2 focus:ring-offset-2"
               style={{
                 backgroundColor: themeColors.background,
                 color: themeColors.text,
                 borderColor: themeColors.border,
+                outlineColor: themeColors.primary,
+                '--tw-ring-color': themeColors.primary
               }}
               placeholder="Enter secure password"
               disabled={isLoading}
@@ -178,7 +182,7 @@ const Login = () => {
             disabled={isLoading}
             className="w-full  py-3 px-4 rounded-lg font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg"
             style={{
-              backgroundColor: "#017343",
+              backgroundColor: themeColors.primary,
               color: themeColors.onPrimary,
             }}
           >

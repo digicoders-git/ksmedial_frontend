@@ -28,9 +28,6 @@ import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
 
 // ---------- helpers ----------
-const fmtNum = (n) =>
-  typeof n === "number" ? n.toLocaleString("en-IN") : n ?? "-";
-
 const fmtCurrency = (n) =>
   typeof n === "number"
     ? `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`

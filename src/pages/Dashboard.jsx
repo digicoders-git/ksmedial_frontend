@@ -46,7 +46,7 @@ const shortId = (id = "") => (id.length > 8 ? `...${id.slice(-8)}` : id);
 
 // ---------- component ----------
 export default function Dashboard() {
-  const { themeColors } = useTheme();
+  const { theme, themeColors } = useTheme();
 
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -125,8 +125,8 @@ export default function Dashboard() {
   const tables = overview?.tables || {};
   const meta = overview?.meta || {};
 
-  const salesLast7Days = charts.salesLast7Days || [];
-  const productsByCategory = charts.productsByCategory || [];
+  const salesLast7Days = useMemo(() => charts.salesLast7Days || [], [charts.salesLast7Days]);
+  const productsByCategory = useMemo(() => charts.productsByCategory || [], [charts.productsByCategory]);
 
   const latestOrders = tables.latestOrders || [];
   const latestProducts = tables.latestProducts || [];
@@ -210,8 +210,8 @@ export default function Dashboard() {
       title: "MLM Earnings",
       value: `₹${mlmStats.totalEarnings.toLocaleString()}`,
       icon: FaCoins,
-      color: "text-green-600",
-      bgColor: "bg-green-100",
+      color: theme === 'dark' ? "text-red-500" : "text-green-600",
+      bgColor: theme === 'dark' ? "bg-red-900/20" : "bg-green-100",
       link: "/earnings"
     },
     {

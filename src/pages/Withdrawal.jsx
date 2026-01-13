@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { FaEye, FaTimes, FaCheck, FaHistory, FaUniversity, FaCheckCircle, FaWallet } from "react-icons/fa";
 import { toast } from "sonner";
 import { API_ENDPOINTS, buildUrl } from "../config/api";
+import { useTheme } from "../context/ThemeContext";
 
 const Withdrawal = () => {
+  const { theme, themeColors } = useTheme();
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
@@ -107,7 +109,7 @@ const Withdrawal = () => {
 
   const getStatusColor = (status) => {
     switch(status) {
-      case "completed": return "bg-green-100 text-green-800";
+      case "completed": return theme === 'dark' ? "bg-red-900/30 text-red-500" : "bg-green-100 text-green-800";
       case "pending": return "bg-yellow-100 text-yellow-800";
       case "approved": return "bg-blue-100 text-blue-800";
       case "rejected": return "bg-red-100 text-red-800";
@@ -116,139 +118,146 @@ const Withdrawal = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen p-6" style={{ backgroundColor: themeColors.background }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Withdrawal Management</h1>
-          <p className="text-gray-600">Manage user withdrawal requests from the mobile app</p>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: themeColors.text }}>Withdrawal Management</h1>
+          <p style={{ color: themeColors.textSecondary }}>Manage user withdrawal requests from the mobile app</p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Total Requests</p>
-                <p className="text-2xl font-bold text-blue-600">{withdrawalRequests.length}</p>
+                <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>Total Requests</p>
+                <p className="text-2xl font-bold" style={{ color: themeColors.info }}>{withdrawalRequests.length}</p>
               </div>
-              <FaHistory className="text-2xl text-blue-600" />
+              <FaHistory className="text-2xl" style={{ color: themeColors.info }} />
             </div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Pending</p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {withdrawalRequests.filter(r => r.status === "pending").length}
+                <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>Pending</p>
+                <p className="text-2xl font-bold" style={{ color: themeColors.warning }}>
+                   {withdrawalRequests.filter(r => r.status === "pending").length}
                 </p>
               </div>
-              <FaTimes className="text-2xl text-yellow-600" />
+              <FaTimes className="text-2xl" style={{ color: themeColors.warning }} />
             </div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Approved</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>Approved</p>
+                <p className="text-2xl font-bold" style={{ color: theme === 'dark' ? '#db2b1c' : '#166534' }}>
                   {withdrawalRequests.filter(r => r.status === "approved").length}
                 </p>
               </div>
-              <FaCheck className="text-2xl text-green-600" />
+              <FaCheck className="text-2xl" style={{ color: theme === 'dark' ? '#db2b1c' : '#166534' }} />
             </div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-lg">
+          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Total Amount</p>
-                <p className="text-2xl font-bold text-purple-600">
+                <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>Total Amount</p>
+                <p className="text-2xl font-bold" style={{ color: themeColors.primary }}>
                   ₹{withdrawalRequests.reduce((sum, r) => sum + r.amount, 0).toLocaleString()}
                 </p>
               </div>
-              <FaWallet className="text-2xl text-purple-600" />
+              <FaWallet className="text-2xl" style={{ color: themeColors.primary }} />
             </div>
           </div>
         </div>
 
         {/* Filter */}
-        <div className="bg-white rounded-xl p-4 shadow-lg mb-8">
+        <div className="rounded-xl p-4 shadow-lg mb-8 border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
           <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-700">Filter by Status:</label>
+            <label className="text-sm font-medium" style={{ color: themeColors.text }}>Filter by Status:</label>
             <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50"
+              style={{ backgroundColor: themeColors.background, borderColor: themeColors.border, color: themeColors.text }}
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
-              <option value="all">All Requests</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="completed">Completed</option>
-              <option value="rejected">Rejected</option>
+              <option value="all" style={{ backgroundColor: themeColors.surface }}>All Requests</option>
+              <option value="pending" style={{ backgroundColor: themeColors.surface }}>Pending</option>
+              <option value="approved" style={{ backgroundColor: themeColors.surface }}>Approved</option>
+              <option value="completed" style={{ backgroundColor: themeColors.surface }}>Completed</option>
+              <option value="rejected" style={{ backgroundColor: themeColors.surface }}>Rejected</option>
             </select>
           </div>
         </div>
 
         {/* Withdrawal Requests Table */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">Withdrawal Requests</h3>
+        <div className="rounded-xl shadow-lg overflow-hidden border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
+          <div className="px-6 py-4 border-b" style={{ borderColor: themeColors.border }}>
+            <h3 className="text-lg font-semibold" style={{ color: themeColors.text }}>Withdrawal Requests</h3>
           </div>
           
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead style={{ backgroundColor: themeColors.background }}>
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">KYC Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  {[
+                    "User",
+                    "Amount",
+                    "Method",
+                    "Date",
+                    "KYC Status",
+                    "Status",
+                    "Actions"
+                  ].map((header) => (
+                    <th key={header} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: themeColors.textSecondary }}>
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y" style={{ borderColor: themeColors.border }}>
                 {loading ? (
                   <tr>
                     <td colSpan="7" className="px-6 py-12 text-center">
                       <div className="flex justify-center items-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        <span className="ml-3 text-gray-600">Loading withdrawal requests...</span>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: themeColors.primary }}></div>
+                        <span className="ml-3" style={{ color: themeColors.textSecondary }}>Loading withdrawal requests...</span>
                       </div>
                     </td>
                   </tr>
                 ) : filteredRequests.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan="7" className="px-6 py-12 text-center" style={{ color: themeColors.textSecondary }}>
                       No withdrawal requests found
                     </td>
                   </tr>
                 ) : (
                   filteredRequests.map((request) => (
-                  <tr key={request.id} className="hover:bg-gray-50">
+                    <tr key={request.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium" style={{ color: themeColors.text }}>{request.userName}</div>
+                          <div className="text-sm" style={{ color: themeColors.textSecondary }}>{request.userId}</div>
+                        </div>
+                      </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{request.userName}</div>
-                        <div className="text-sm text-gray-500">{request.userId}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-lg font-bold text-green-600">
+                      <span className={`text-lg font-bold ${theme === 'dark' ? 'text-red-500' : 'text-green-600'}`}>
                         ₹{request.amount.toLocaleString()}
                       </span>
-                      <div className="text-xs text-gray-500">Fee: ₹{request.fee}</div>
+                      <div className="text-xs" style={{ color: themeColors.textSecondary }}>Fee: ₹{request.fee}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{request.method}</div>
-                      <div className="text-sm text-gray-500">{request.accountDetails}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {request.date}
-                    </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm" style={{ color: themeColors.text }}>{request.method}</div>
+                        <div className="text-sm" style={{ color: themeColors.textSecondary }}>{request.accountDetails}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: themeColors.text }}>
+                        {request.date}
+                      </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         request.kycStatus === "verified" 
-                          ? "bg-green-100 text-green-800" 
+                          ? theme === 'dark' ? "bg-red-900/30 text-red-500" : "bg-green-100 text-green-800"
                           : "bg-red-100 text-red-800"
                       }`}>
                         {request.kycStatus === "verified" ? "✓ Verified" : "✗ Not Verified"}
@@ -274,7 +283,8 @@ const Withdrawal = () => {
                           <>
                             <button
                               onClick={() => handleApproveRequest(request.id)}
-                              className="text-green-600 hover:text-green-900"
+                              className="hover:opacity-80"
+                              style={{ color: theme === 'dark' ? '#db2b1c' : '#16a34a' }}
                             >
                               <FaCheck />
                             </button>
@@ -289,7 +299,8 @@ const Withdrawal = () => {
                         {request.status === "approved" && (
                           <button
                             onClick={() => handleCompletePayment(request.id)}
-                            className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                            className="px-3 py-1 text-white rounded text-xs hover:opacity-90"
+                            style={{ backgroundColor: themeColors.primary }}
                           >
                             Mark as Paid
                           </button>
@@ -307,57 +318,58 @@ const Withdrawal = () => {
         {/* Request Details Modal */}
         {showRequestModal && selectedRequest && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="rounded-xl p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto shadow-2xl border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-800">Withdrawal Request Details</h3>
+                <h3 className="text-xl font-semibold" style={{ color: themeColors.text }}>Withdrawal Request Details</h3>
                 <button
                   onClick={() => setShowRequestModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-2xl hover:opacity-70 transition-opacity"
+                  style={{ color: themeColors.textSecondary }}
                 >
                   ×
                 </button>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-800 mb-3">Request Information</h4>
+                <div className="rounded-lg p-4" style={{ backgroundColor: themeColors.background }}>
+                  <h4 className="font-semibold mb-3" style={{ color: themeColors.text }}>Request Information</h4>
                   <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-600">Amount:</span> <span className="font-medium text-green-600">₹{selectedRequest.amount.toLocaleString()}</span></div>
-                    <div><span className="text-gray-600">Fee:</span> <span className="font-medium">₹{selectedRequest.fee}</span></div>
-                    <div><span className="text-gray-600">Net Amount:</span> <span className="font-medium">₹{(selectedRequest.amount - selectedRequest.fee).toLocaleString()}</span></div>
-                    <div><span className="text-gray-600">Method:</span> <span className="font-medium">{selectedRequest.method}</span></div>
-                    <div><span className="text-gray-600">Date:</span> <span className="font-medium">{selectedRequest.date}</span></div>
-                    <div><span className="text-gray-600">Reference:</span> <span className="font-medium">{selectedRequest.referenceId}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Amount:</span> <span className="font-medium" style={{ color: theme === 'dark' ? '#db2b1c' : '#166534' }}>₹{selectedRequest.amount.toLocaleString()}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Fee:</span> <span className="font-medium" style={{ color: themeColors.text }}>₹{selectedRequest.fee}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Net Amount:</span> <span className="font-medium" style={{ color: themeColors.text }}>₹{(selectedRequest.amount - selectedRequest.fee).toLocaleString()}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Method:</span> <span className="font-medium" style={{ color: themeColors.text }}>{selectedRequest.method}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Date:</span> <span className="font-medium" style={{ color: themeColors.text }}>{selectedRequest.date}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Reference:</span> <span className="font-medium" style={{ color: themeColors.text }}>{selectedRequest.referenceId}</span></div>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-800 mb-3">User Details</h4>
+                <div className="rounded-lg p-4" style={{ backgroundColor: themeColors.background }}>
+                  <h4 className="font-semibold mb-3" style={{ color: themeColors.text }}>User Details</h4>
                   <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-600">Name:</span> <span className="font-medium">{selectedRequest.userDetails.name}</span></div>
-                    <div><span className="text-gray-600">Email:</span> <span className="font-medium">{selectedRequest.userDetails.email}</span></div>
-                    <div><span className="text-gray-600">Phone:</span> <span className="font-medium">{selectedRequest.userDetails.phone}</span></div>
-                    <div><span className="text-gray-600">Address:</span> <span className="font-medium">{selectedRequest.userDetails.address}</span></div>
-                    <div><span className="text-gray-600">PAN:</span> <span className="font-medium">{selectedRequest.userDetails.panCard}</span></div>
-                    <div><span className="text-gray-600">Aadhar:</span> <span className="font-medium">{selectedRequest.userDetails.aadharCard}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Name:</span> <span className="font-medium" style={{ color: themeColors.text }}>{selectedRequest.userDetails.name}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Email:</span> <span className="font-medium" style={{ color: themeColors.text }}>{selectedRequest.userDetails.email}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Phone:</span> <span className="font-medium" style={{ color: themeColors.text }}>{selectedRequest.userDetails.phone}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Address:</span> <span className="font-medium" style={{ color: themeColors.text }}>{selectedRequest.userDetails.address}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>PAN:</span> <span className="font-medium" style={{ color: themeColors.text }}>{selectedRequest.userDetails.panCard}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Aadhar:</span> <span className="font-medium" style={{ color: themeColors.text }}>{selectedRequest.userDetails.aadharCard}</span></div>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-800 mb-3">Bank Details</h4>
+                <div className="rounded-lg p-4" style={{ backgroundColor: themeColors.background }}>
+                  <h4 className="font-semibold mb-3" style={{ color: themeColors.text }}>Bank Details</h4>
                   <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-600">Account Number:</span> <span className="font-medium">{selectedRequest.bankAccount || selectedRequest.upiId || "N/A"}</span></div>
-                    <div><span className="text-gray-600">IFSC Code:</span> <span className="font-medium">{selectedRequest.ifscCode || "N/A"}</span></div>
-                    <div><span className="text-gray-600">Account Holder:</span> <span className="font-medium">{selectedRequest.userDetails.name}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Account Number:</span> <span className="font-medium" style={{ color: themeColors.text }}>{selectedRequest.bankAccount || selectedRequest.upiId || "N/A"}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>IFSC Code:</span> <span className="font-medium" style={{ color: themeColors.text }}>{selectedRequest.ifscCode || "N/A"}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Account Holder:</span> <span className="font-medium" style={{ color: themeColors.text }}>{selectedRequest.userDetails.name}</span></div>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4 md:col-span-2 lg:col-span-3">
-                  <h4 className="font-semibold text-gray-800 mb-3">KYC Documents</h4>
+                <div className="rounded-lg p-4 md:col-span-2 lg:col-span-3" style={{ backgroundColor: themeColors.background }}>
+                  <h4 className="font-semibold mb-3" style={{ color: themeColors.text }}>KYC Documents</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div><span className="text-gray-600">PAN Image:</span> <span className="font-medium text-blue-600 cursor-pointer">{selectedRequest.userDetails.panImage}</span></div>
-                    <div><span className="text-gray-600">Aadhar Image:</span> <span className="font-medium text-blue-600 cursor-pointer">{selectedRequest.userDetails.aadharImage}</span></div>
-                    <div><span className="text-gray-600">Bank Passbook:</span> <span className="font-medium text-blue-600 cursor-pointer">{selectedRequest.userDetails.bankPassbook}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>PAN Image:</span> <span className="font-medium text-blue-500 cursor-pointer">{selectedRequest.userDetails.panImage}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Aadhar Image:</span> <span className="font-medium text-blue-500 cursor-pointer">{selectedRequest.userDetails.aadharImage}</span></div>
+                    <div><span style={{ color: themeColors.textSecondary }}>Bank Passbook:</span> <span className="font-medium text-blue-500 cursor-pointer">{selectedRequest.userDetails.bankPassbook}</span></div>
                   </div>
                 </div>
               </div>
@@ -378,7 +390,8 @@ const Withdrawal = () => {
                       handleApproveRequest(selectedRequest.id);
                       setShowRequestModal(false);
                     }}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    className="px-4 py-2 text-white rounded-lg hover:opacity-90 font-semibold"
+                    style={{ backgroundColor: theme === 'dark' ? '#db2b1c' : '#16a34a' }}
                   >
                     Approve Request
                   </button>

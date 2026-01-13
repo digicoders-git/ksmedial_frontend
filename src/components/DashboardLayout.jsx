@@ -14,7 +14,7 @@ const DashboardLayout = () => {
   // ✅ Auth: admin object + logout
   const { admin, logout } = useAuth();
 
-  const { themeColors, toggleTheme, palette, changePalette } = useTheme();
+  const { themeColors, palette, changePalette } = useTheme();
   const { currentFont, corporateFonts, changeFont } = useFont();
   const location = useLocation();
   const navigate = useNavigate();
@@ -65,7 +65,7 @@ const DashboardLayout = () => {
           changeFont={changeFont}
           palette={palette}
           changePalette={changePalette}
-          toggleTheme={toggleTheme}
+
         />
 
         {/* Page Content */}

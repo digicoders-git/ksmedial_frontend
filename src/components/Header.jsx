@@ -4,8 +4,6 @@ import { useTheme } from "../context/ThemeContext";
 import { useFont } from "../context/FontContext";
 import { 
   FaCog, 
-  FaSun, 
-  FaMoon, 
   FaPalette, 
   FaFont, 
   FaTimes,
@@ -21,7 +19,6 @@ const SettingsModal = ({
   themeColors,
   palette,
   changePalette,
-  toggleTheme,
   availablePalettes
 }) => {
   // Use FontContext directly in SettingsModal
@@ -114,45 +111,7 @@ const SettingsModal = ({
         {/* Settings Sections */}
         <div className="space-y-4">
           {/* Theme Section */}
-          <div>
-            <label
-              className="flex items-center gap-2 text-xs font-medium mb-2"
-              style={{ color: themeColors.text }}
-            >
-              <FaPalette className="text-sm" />
-              Theme
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={toggleTheme}
-                className={`flex items-center justify-center gap-1.5 p-2 rounded-lg border transition-all duration-200 ${themeColors.mode === 'light' ? 'ring-1' : ''
-                  }`}
-                style={{
-                  backgroundColor: themeColors.mode === 'light' ? themeColors.primary : themeColors.background,
-                  borderColor: themeColors.mode === 'light' ? themeColors.primary : themeColors.border,
-                  color: themeColors.mode === 'light' ? themeColors.onPrimary : themeColors.text,
-                  ringColor: themeColors.primary,
-                }}
-              >
-                <FaSun className="text-sm" />
-                <span className="text-xs font-medium">Light</span>
-              </button>
-              <button
-                onClick={toggleTheme}
-                className={`flex items-center justify-center gap-1.5 p-2 rounded-lg border transition-all duration-200 ${themeColors.mode === 'dark' ? 'ring-1' : ''
-                  }`}
-                style={{
-                  backgroundColor: themeColors.mode === 'dark' ? themeColors.primary : themeColors.background,
-                  borderColor: themeColors.mode === 'dark' ? themeColors.primary : themeColors.border,
-                  color: themeColors.mode === 'dark' ? themeColors.onPrimary : themeColors.text,
-                  ringColor: themeColors.primary,
-                }}
-              >
-                <FaMoon className="text-sm" />
-                <span className="text-xs font-medium">Dark</span>
-              </button>
-            </div>
-          </div>
+
 
           {/* Font Section */}
           <div>
@@ -272,7 +231,7 @@ const Header = memo(({
   currentPageTitle
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const { themeColors, toggleTheme, palette, changePalette, availablePalettes } = useTheme();
+  const { themeColors, palette, changePalette, availablePalettes } = useTheme();
   const { currentFont } = useFont();
 
   return (
@@ -323,24 +282,7 @@ const Header = memo(({
             <FaCog className="text-sm group-hover:animate-spin" />
           </button>
 
-          {/* Quick Theme Toggle */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-md border hover:scale-110 transition-all duration-300 group"
-            style={{
-              backgroundColor: themeColors.background,
-              color: themeColors.text,
-              borderColor: themeColors.border,
-            }}
-            aria-label="Quick theme toggle"
-            title={`Switch to ${themeColors.mode === 'dark' ? 'Light' : 'Dark'} Mode`}
-          >
-            {themeColors.mode === "dark" ? (
-              <FaSun className="text-sm group-hover:rotate-180 transition-transform duration-300" />
-            ) : (
-              <FaMoon className="text-sm group-hover:rotate-180 transition-transform duration-300" />
-            )}
-          </button>
+
         </div>
       </header>
 
@@ -351,7 +293,6 @@ const Header = memo(({
         themeColors={themeColors}
         palette={palette}
         changePalette={changePalette}
-        toggleTheme={toggleTheme}
         availablePalettes={availablePalettes}
       />
     </>

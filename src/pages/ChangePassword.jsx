@@ -49,7 +49,7 @@ export default function ChangePassword() {
         newPassword: form.newPassword,
       };
 
-      const res = await changePassword(payload);
+      await changePassword(payload);
 
       Swal.fire({
         icon: "success",
