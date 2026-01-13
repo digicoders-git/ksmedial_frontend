@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FaUsers, FaEye, FaCoins, FaCalendar, FaSearch } from "react-icons/fa";
 import { toast } from "sonner";
+import { API_ENDPOINTS, isValidObjectId } from "../config/api";
 
 const Referrals = () => {
   const [referrals, setReferrals] = useState([]);
@@ -26,10 +27,21 @@ const Referrals = () => {
     try {
       setLoading(true);
       // TODO: Get userId from auth context
-      const userId = "USER001"; // Replace with actual user ID from auth
+      const userId = "65a1b2c3d4e5f6a7b8c9d0e1"; // Replace with actual user ID from auth
       
-      const response = await fetch(`http://localhost:5000/api/mlm/referrals/${userId}`);
-      const data = await response.json();
+      if (!isValidObjectId(userId)) {
+        setLoading(false);
+        return;
+      }
+      
+      const response = await fetch(API_ENDPOINTS.MLM.REFERRALS(userId));
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error("Server returned an invalid response");
+      }
       
       if (response.ok) {
         setReferrals(data.referrals || []);
@@ -39,7 +51,7 @@ const Referrals = () => {
       }
     } catch (error) {
       console.error("Fetch referrals error:", error);
-      toast.error("Failed to fetch referrals");
+      toast.error(error.message || "Failed to fetch referrals");
     } finally {
       setLoading(false);
     }
@@ -92,6 +104,34 @@ const Referrals = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             <span className="ml-3 text-gray-600">Loading referrals...</span>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  const testUserId = "65a1b2c3d4e5f6a7b8c9d0e1";
+  if (!isValidObjectId(testUserId)) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md">
+          <div className="text-red-500 text-5xl mb-4 text-center flex justify-center">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Invalid Session</h2>
+          <p className="text-gray-600 mb-6">
+            Your User ID format is invalid (<b>{testUserId}</b>). MongoDB expects a 24-character hex ID.
+          </p>
+          <div className="bg-blue-50 p-4 rounded-lg text-left text-sm text-blue-800 mb-6">
+            <p className="font-bold mb-1">How to fix:</p>
+            <ol className="list-decimal ml-4">
+              <li>Log in with a real account</li>
+              <li>Or seed the database to get a test ID</li>
+            </ol>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full bg-[#007242] text-white py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+          >
+            Retry Connection
+          </button>
         </div>
       </div>
     );

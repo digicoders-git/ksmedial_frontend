@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import { FaWallet, FaUniversity, FaCreditCard, FaHistory, FaPlus, FaEdit, FaTrash, FaUser, FaIdCard, FaFileUpload, FaEye, FaCheck, FaTimes } from "react-icons/fa";
+import { useState, useEffect, useCallback } from "react";
+import { FaEye, FaTimes, FaCheck, FaHistory, FaUniversity, FaCheckCircle } from "react-icons/fa";
 import { toast } from "sonner";
+import { API_ENDPOINTS, buildUrl } from "../config/api";
 
 const Withdrawal = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -13,7 +14,7 @@ const Withdrawal = () => {
   const fetchWithdrawalRequests = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/withdrawals/all?status=${filterStatus}`);
+      const response = await fetch(buildUrl(API_ENDPOINTS.WITHDRAWAL.ALL, { status: filterStatus }));
       const data = await response.json();
       
       if (response.ok) {
@@ -39,7 +40,7 @@ const Withdrawal = () => {
 
   const handleApproveRequest = async (requestId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/withdrawals/approve/${requestId}`, {
+      const response = await fetch(API_ENDPOINTS.WITHDRAWAL.APPROVE(requestId), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ adminId: "ADMIN_001" }),
@@ -61,7 +62,7 @@ const Withdrawal = () => {
 
   const handleRejectRequest = async (requestId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/withdrawals/reject/${requestId}`, {
+      const response = await fetch(API_ENDPOINTS.WITHDRAWAL.REJECT(requestId), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ adminId: "ADMIN_001", reason: "Rejected by admin" }),
@@ -83,7 +84,7 @@ const Withdrawal = () => {
 
   const handleCompletePayment = async (requestId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/withdrawals/complete/${requestId}`, {
+      const response = await fetch(API_ENDPOINTS.WITHDRAWAL.COMPLETE(requestId), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transactionId: `TXN${Date.now()}` }),

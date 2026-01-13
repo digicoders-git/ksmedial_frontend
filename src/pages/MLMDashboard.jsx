@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FaUsers, FaCoins, FaWallet, FaChartLine, FaCopy } from "react-icons/fa";
 import { toast } from "sonner";
+import { API_ENDPOINTS, isValidObjectId } from "../config/api";
 
 const MLMDashboard = () => {
   const [mlmData, setMlmData] = useState({
@@ -27,10 +28,21 @@ const MLMDashboard = () => {
     try {
       setLoading(true);
       // TODO: Get userId from auth context
-      const userId = "USER001"; // Replace with actual user ID from auth
+      const userId = "65a1b2c3d4e5f6a7b8c9d0e1"; // Replace with actual user ID from auth
       
-      const response = await fetch(`http://localhost:5000/api/mlm/dashboard/${userId}`);
-      const data = await response.json();
+      if (!isValidObjectId(userId)) {
+        setLoading(false);
+        return; // Don't even try if ID is invalid
+      }
+      
+      const response = await fetch(API_ENDPOINTS.MLM.DASHBOARD(userId));
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (_) {
+        throw new Error("Server returned an invalid response");
+      }
       
       if (response.ok) {
         setMlmData(data);
@@ -39,7 +51,7 @@ const MLMDashboard = () => {
       }
     } catch (error) {
       console.error("Fetch MLM data error:", error);
-      toast.error("Failed to fetch MLM data");
+      toast.error(error.message || "Failed to fetch MLM data");
     } finally {
       setLoading(false);
     }
@@ -72,6 +84,34 @@ const MLMDashboard = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             <span className="ml-3 text-gray-600">Loading MLM data...</span>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  const testUserId = "65a1b2c3d4e5f6a7b8c9d0e1"; // Valid Hex ID 
+  if (!isValidObjectId(testUserId)) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md">
+          <div className="text-red-500 text-5xl mb-4 text-center flex justify-center">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Invalid Session</h2>
+          <p className="text-gray-600 mb-6">
+            Your User ID format is invalid (<b>{testUserId}</b>). MongoDB expects a 24-character hex ID.
+          </p>
+          <div className="bg-blue-50 p-4 rounded-lg text-left text-sm text-blue-800 mb-6">
+            <p className="font-bold mb-1">How to fix:</p>
+            <ol className="list-decimal ml-4">
+              <li>Log in with a real account</li>
+              <li>Or seed the database to get a test ID</li>
+            </ol>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full bg-[#007242] text-white py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+          >
+            Retry Connection
+          </button>
         </div>
       </div>
     );

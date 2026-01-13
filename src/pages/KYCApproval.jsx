@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import { FaIdCard, FaEye, FaCheck, FaTimes, FaUser, FaFileImage, FaDownload, FaHistory } from "react-icons/fa";
+import { useState, useEffect, useCallback } from "react";
+import { FaEye, FaTimes, FaCheck, FaFileAlt, FaUser, FaIdCard, FaCheckCircle } from "react-icons/fa";
 import { toast } from "sonner";
+import { API_ENDPOINTS, buildUrl } from "../config/api";
 
 const KYCApproval = () => {
   const [selectedKYC, setSelectedKYC] = useState(null);
@@ -15,7 +16,7 @@ const KYCApproval = () => {
   const fetchKYCRequests = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/kyc/all?status=${filterStatus}`);
+      const response = await fetch(buildUrl(API_ENDPOINTS.KYC.ALL, { status: filterStatus }));
       const data = await response.json();
       
       if (response.ok) {
@@ -42,7 +43,7 @@ const KYCApproval = () => {
 
   const handleApproveKYC = async (kycId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/kyc/approve/${kycId}`, {
+      const response = await fetch(API_ENDPOINTS.KYC.APPROVE(kycId), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ adminId: "ADMIN_001" }), // TODO: Get from auth context
@@ -64,7 +65,7 @@ const KYCApproval = () => {
 
   const handleRejectKYC = async (kycId, reason) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/kyc/reject/${kycId}`, {
+      const response = await fetch(API_ENDPOINTS.KYC.REJECT(kycId), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

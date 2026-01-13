@@ -26,6 +26,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import { API_ENDPOINTS } from "../config/api";
 import { getDashboardOverview } from "../apis/dashboard";
 import { Link } from "react-router-dom";
 
@@ -70,9 +71,9 @@ export default function Dashboard() {
     try {
       setMlmLoading(true);
       // TODO: Get userId from auth context
-      const userId = "USER001";
+      const userId = "65a1b2c3d4e5f6g7h8i9j0k1"; // Use a valid ObjectId format to avoid server crash
       
-      const response = await fetch(`http://localhost:5000/api/mlm/dashboard/${userId}`);
+      const response = await fetch(API_ENDPOINTS.MLM.DASHBOARD(userId));
       const data = await response.json();
       
       if (response.ok) {

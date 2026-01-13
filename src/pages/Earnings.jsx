@@ -15,6 +15,7 @@ import {
   FaArrowDown
 } from "react-icons/fa";
 import { toast } from "sonner";
+import { API_ENDPOINTS, buildUrl, isValidObjectId } from "../config/api";
 
 const Earnings = () => {
   const [earningsData, setEarningsData] = useState({
@@ -42,9 +43,9 @@ const Earnings = () => {
     try {
       setLoading(true);
       // TODO: Get userId from auth context
-      const userId = "USER001";
+      const userId = "65a1b2c3d4e5f6a7b8c9d0e1";
       
-      const response = await fetch(`http://localhost:5000/api/mlm/dashboard/${userId}`);
+      const response = await fetch(API_ENDPOINTS.MLM.DASHBOARD(userId));
       const data = await response.json();
       
       if (response.ok) {
@@ -70,10 +71,10 @@ const Earnings = () => {
   const fetchTransactions = async () => {
     try {
       // TODO: Get userId from auth context
-      const userId = "USER001";
+      const userId = "65a1b2c3d4e5f6a7b8c9d0e1";
       
       const response = await fetch(
-        `http://localhost:5000/api/mlm/transactions/${userId}?type=${typeFilter}&limit=100`
+        buildUrl(API_ENDPOINTS.MLM.TRANSACTIONS(userId), { type: typeFilter, limit: 100 })
       );
       const data = await response.json();
       
@@ -208,6 +209,34 @@ const Earnings = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             <span className="ml-3 text-gray-600">Loading earnings data...</span>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  const testUserId = "65a1b2c3d4e5f6a7b8c9d0e1";
+  if (!isValidObjectId(testUserId)) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md">
+          <div className="text-red-500 text-5xl mb-4 text-center flex justify-center">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Invalid Session</h2>
+          <p className="text-gray-600 mb-6">
+            Your User ID format is invalid (<b>{testUserId}</b>). MongoDB expects a 24-character hex ID.
+          </p>
+          <div className="bg-blue-50 p-4 rounded-lg text-left text-sm text-blue-800 mb-6">
+            <p className="font-bold mb-1">How to fix:</p>
+            <ol className="list-decimal ml-4">
+              <li>Log in with a real account</li>
+              <li>Or seed the database to get a test ID</li>
+            </ol>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full bg-[#007242] text-white py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+          >
+            Retry Connection
+          </button>
         </div>
       </div>
     );
