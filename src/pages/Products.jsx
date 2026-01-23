@@ -9,6 +9,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  bulkUploadProduct,
 } from "../apis/products";
 import {
   FaBoxOpen,
@@ -38,7 +39,19 @@ const fmtDate = (iso) =>
 
 const emptyForm = {
   name: "",
-  price: "",
+  mrp: "",
+  purchasePrice: "",
+  sellingPrice: "", // mapped to price
+  margin: "",
+  stock: "",
+  unit: "Pcs",
+  manufacturer: "",
+  batchNo: "",
+  expiryDate: "",
+  prescriptionRequired: false,
+  gst: 0,
+  
+  price: "", // alias for sellingPrice
   discountPercent: "",
   categoryId: "",
   description: "",
@@ -65,6 +78,7 @@ export default function Products() {
 
   const [mainImageFile, setMainImageFile] = useState(null);
   const [galleryImageFiles, setGalleryImageFiles] = useState([]);
+  const [csvFile, setCsvFile] = useState(null); // CSV upload state
 
   // NEW: dynamic lists
   const [sizesList, setSizesList] = useState([""]);
@@ -127,6 +141,7 @@ export default function Products() {
     setEditing(null);
     setMainImageFile(null);
     setGalleryImageFiles([]);
+    setCsvFile(null);
     setSizesList([""]);
     setColorsList([""]);
     setAddOns([{ name: "", price: "", isDefault: true }]);
@@ -237,10 +252,19 @@ export default function Products() {
     setEditing(prod);
     setForm({
       name: prod.name || "",
-      price:
-        typeof prod.price === "number"
-          ? String(prod.price)
-          : prod.price || "",
+      mrp: prod.mrp || "",
+      purchasePrice: prod.purchasePrice || "",
+      sellingPrice: prod.sellingPrice || prod.price || "",
+      price: prod.sellingPrice || prod.price || "",
+      margin: prod.margin || "",
+      stock: prod.stock || "",
+      unit: prod.unit || "Pcs",
+      manufacturer: prod.manufacturer || "",
+      batchNo: prod.batchNo || "",
+      expiryDate: prod.expiryDate ? new Date(prod.expiryDate).toISOString().split('T')[0] : "",
+      prescriptionRequired: !!prod.prescriptionRequired,
+      gst: prod.gst || 0,
+      
       discountPercent:
         typeof prod.discountPercent === "number"
           ? String(prod.discountPercent)
@@ -296,7 +320,19 @@ export default function Products() {
   const buildFormData = () => {
     const fd = new FormData();
     fd.append("name", form.name.trim());
-    fd.append("price", form.price.trim());
+    fd.append("price", form.sellingPrice || form.price); // Use selling price logic
+    fd.append("sellingPrice", form.sellingPrice || form.price);
+
+    fd.append("mrp", form.mrp);
+    fd.append("purchasePrice", form.purchasePrice);
+    fd.append("margin", form.margin);
+    fd.append("stock", form.stock);
+    fd.append("unit", form.unit);
+    fd.append("manufacturer", form.manufacturer);
+    fd.append("batchNo", form.batchNo);
+    fd.append("expiryDate", form.expiryDate);
+    fd.append("prescriptionRequired", String(form.prescriptionRequired));
+    fd.append("gst", form.gst);
 
     if (form.discountPercent?.trim() !== "") {
       fd.append("discountPercent", form.discountPercent.trim());
@@ -479,12 +515,46 @@ export default function Products() {
       return;
     }
 
+    // CSV BULK UPLOAD HANDLING
+    if (!editing && csvFile) {
+        try {
+            setSaving(true);
+            const fd = new FormData();
+            fd.append("csvFile", csvFile);
+            
+            const res = await bulkUploadProduct(fd);
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Import Result',
+                text: res.message,
+                footer: res.errors && res.errors.length > 0 ? 'Check console for error details' : ''
+            });
+            if(res.errors && res.errors.length > 0) {
+                 console.warn("Bulk upload errors:", res.errors);
+            }
+
+            resetForm();
+            setCsvFile(null);
+            setIsModalOpen(false);
+            await fetchProducts();
+        } catch(err) {
+             console.error(err);
+             const msg = err?.response?.data?.message || err.message || "Failed to upload CSV";
+             setError(msg);
+             Swal.fire({ icon: 'error', title: 'Upload Failed', text: msg });
+        } finally {
+             setSaving(false);
+        }
+        return;
+    }
+
     if (!form.name.trim()) {
       setError("Product name is required.");
       return;
     }
-    if (!form.price.trim()) {
-      setError("Price is required.");
+    if (!form.sellingPrice && !form.price) {
+      setError("Selling Price is required.");
       return;
     }
 
@@ -763,15 +833,7 @@ export default function Products() {
                     backgroundColor: themeColors.background + "30",
                   }}
                 >
-                  {[
-                    "Name",
-                    "Category",
-                    "Price",
-                    "Discount",
-                    "Status",
-                    "Created",
-                    "Actions",
-                  ].map((h) => (
+                  {["Name", "Category", "Batch", "Expiry", "Stock", "MRP", "Price", "Status", "Actions"].map((h) => (
                     <th
                       key={h}
                       className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide"
@@ -815,36 +877,29 @@ export default function Products() {
                       "-";
                     return (
                       <tr key={p._id || p.id || p.slug}>
-                        <td
-                          className="px-4 py-2"
-                          style={{ color: themeColors.text }}
-                        >
-                          {p.name}
-                          {p.discountPercent ? (
-                            <span className="ml-1 text-xs opacity-60">
-                              ({p.discountPercent}% off)
-                            </span>
-                          ) : null}
+                        <td className="px-4 py-2" style={{ color: themeColors.text }}>
+                          <div className="flex flex-col">
+                            <span className="font-semibold">{p.name}</span>
+                            <span className="text-xs opacity-60">Mfr: {p.manufacturer || "-"}</span>
+                          </div>
                         </td>
-                        <td
-                          className="px-4 py-2"
-                          style={{ color: themeColors.text }}
-                        >
+                        <td className="px-4 py-2 text-xs" style={{ color: themeColors.text }}>
                           {catName}
                         </td>
-                        <td
-                          className="px-4 py-2"
-                          style={{ color: themeColors.text }}
-                        >
-                          {fmtCurrency(p.price)}
+                        <td className="px-4 py-2 text-xs" style={{ color: themeColors.text }}>
+                          {p.batchNo || "-"}
                         </td>
-                        <td
-                          className="px-4 py-2 text-xs"
-                          style={{ color: themeColors.text }}
-                        >
-                          {p.discountPercent
-                            ? `${p.discountPercent}%`
-                            : "-"}
+                         <td className="px-4 py-2 text-xs" style={{ color: themeColors.text }}>
+                          {p.expiryDate ? fmtDate(p.expiryDate) : "-"}
+                        </td>
+                         <td className="px-4 py-2 text-xs font-semibold" style={{ color: (p.stock || 0) < 10 ? themeColors.danger : themeColors.text }}>
+                          {p.stock || 0} {p.unit || 'Pcs'}
+                        </td>
+                        <td className="px-4 py-2 text-xs" style={{ color: themeColors.text }}>
+                          {fmtCurrency(p.mrp)}
+                        </td>
+                         <td className="px-4 py-2 text-sm font-bold" style={{ color: themeColors.primary }}>
+                          {fmtCurrency(getFinalPrice(p))}
                         </td>
                         <td className="px-4 py-2">
                           <span
@@ -1301,7 +1356,6 @@ export default function Products() {
                     type="text"
                     value={form.name}
                     onChange={handleChange}
-                    required
                     className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
                     style={{
                       backgroundColor: themeColors.background,
@@ -1342,32 +1396,260 @@ export default function Products() {
                   </select>
                 </div>
 
-                {/* Price */}
+                {/* Manufacturer */}
                 <div>
                   <label
-                    htmlFor="price"
+                    htmlFor="manufacturer"
                     className="block mb-1 text-sm font-medium"
                     style={{ color: themeColors.text }}
                   >
-                    Price (₹) <span className="text-red-500">*</span>
+                    Manufacturer
                   </label>
                   <input
-                    id="price"
-                    name="price"
-                    type="number"
-                    min="0"
-                    value={form.price}
+                    id="manufacturer"
+                    name="manufacturer"
+                    type="text"
+                    value={form.manufacturer}
                     onChange={handleChange}
-                    required
                     className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
                     style={{
                       backgroundColor: themeColors.background,
                       borderColor: themeColors.border,
                       color: themeColors.text,
                     }}
-                    placeholder="2999"
+                    placeholder="e.g. Cipla, Sun Pharma"
                   />
                 </div>
+
+                {/* Batch No */}
+                <div>
+                  <label
+                    htmlFor="batchNo"
+                    className="block mb-1 text-sm font-medium"
+                    style={{ color: themeColors.text }}
+                  >
+                    Batch No
+                  </label>
+                  <input
+                    id="batchNo"
+                    name="batchNo"
+                    type="text"
+                    value={form.batchNo}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
+                    style={{
+                      backgroundColor: themeColors.background,
+                      borderColor: themeColors.border,
+                      color: themeColors.text,
+                    }}
+                    placeholder="e.g. BATCH123"
+                  />
+                </div>
+
+                {/* Expiry Date */}
+                <div>
+                  <label
+                    htmlFor="expiryDate"
+                    className="block mb-1 text-sm font-medium"
+                    style={{ color: themeColors.text }}
+                  >
+                    Expiry Date
+                  </label>
+                  <input
+                    id="expiryDate"
+                    name="expiryDate"
+                    type="date"
+                    value={form.expiryDate}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
+                    style={{
+                      backgroundColor: themeColors.background,
+                      borderColor: themeColors.border,
+                      color: themeColors.text,
+                    }}
+                  />
+                </div>     
+
+                {/* Stock & Unit */}
+                 <div>
+                  <label
+                    htmlFor="stock"
+                    className="block mb-1 text-sm font-medium"
+                    style={{ color: themeColors.text }}
+                  >
+                    Stock Qty <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                     <input
+                      id="stock"
+                      name="stock"
+                      type="number"
+                      min="0"
+                      value={form.stock}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: themeColors.background,
+                        borderColor: themeColors.border,
+                        color: themeColors.text,
+                      }}
+                      placeholder="100"
+                    />
+                     <select
+                      id="unit"
+                      name="unit"
+                      value={form.unit}
+                      onChange={handleChange}
+                      className="px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: themeColors.background,
+                        borderColor: themeColors.border,
+                        color: themeColors.text,
+                      }}
+                    >
+                      <option value="Pcs">Pcs</option>
+                      <option value="Box">Box</option>
+                      <option value="Strip">Strip</option>
+                      <option value="Bottle">Bottle</option>
+                       <option value="Pack">Pack</option>
+                      <option value="Kg">Kg</option>
+                      <option value="Ltr">Ltr</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* MRP */}
+                <div>
+                  <label
+                    htmlFor="mrp"
+                    className="block mb-1 text-sm font-medium"
+                    style={{ color: themeColors.text }}
+                  >
+                    MRP (₹) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="mrp"
+                    name="mrp"
+                    type="number"
+                    min="0"
+                    value={form.mrp}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
+                    style={{
+                      backgroundColor: themeColors.background,
+                      borderColor: themeColors.border,
+                      color: themeColors.text,
+                    }}
+                    placeholder="3500"
+                  />
+                </div>
+
+                {/* Purchase Price */}
+                 <div>
+                  <label
+                    htmlFor="purchasePrice"
+                    className="block mb-1 text-sm font-medium"
+                    style={{ color: themeColors.text }}
+                  >
+                    Purchase Price (₹)
+                  </label>
+                  <input
+                    id="purchasePrice"
+                    name="purchasePrice"
+                    type="number"
+                    min="0"
+                    value={form.purchasePrice}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
+                    style={{
+                      backgroundColor: themeColors.background,
+                      borderColor: themeColors.border,
+                      color: themeColors.text,
+                    }}
+                    placeholder="2000"
+                  />
+                </div>   
+
+                {/* Selling Price */}
+                <div>
+                  <label
+                    htmlFor="sellingPrice"
+                    className="block mb-1 text-sm font-medium"
+                    style={{ color: themeColors.text }}
+                  >
+                    Selling Price (₹) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="sellingPrice"
+                    name="sellingPrice"
+                    type="number"
+                    min="0"
+                    value={form.sellingPrice}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
+                    style={{
+                      backgroundColor: themeColors.background,
+                      borderColor: themeColors.border,
+                      color: themeColors.text,
+                    }}
+                    placeholder="2500"
+                  />
+                </div>
+
+                 {/* Margin (Auto/Manual) */}
+                 <div>
+                  <label
+                    htmlFor="margin"
+                    className="block mb-1 text-sm font-medium"
+                    style={{ color: themeColors.text }}
+                  >
+                    Margin (%)
+                  </label>
+                  <input
+                    id="margin"
+                    name="margin"
+                    type="number"
+                    value={form.margin}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
+                    style={{
+                      backgroundColor: themeColors.background,
+                      borderColor: themeColors.border,
+                      color: themeColors.text,
+                    }}
+                    placeholder="Auto or Manual"
+                  />
+                </div>
+
+                {/* GST */}
+                <div>
+                  <label
+                    htmlFor="gst"
+                    className="block mb-1 text-sm font-medium"
+                    style={{ color: themeColors.text }}
+                  >
+                    GST (%)
+                  </label>
+                  <select
+                    id="gst"
+                    name="gst"
+                    value={form.gst}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
+                    style={{
+                      backgroundColor: themeColors.background,
+                      borderColor: themeColors.border,
+                      color: themeColors.text,
+                    }}
+                  >
+                    <option value="0">0%</option>
+                    <option value="5">5%</option>
+                    <option value="12">12%</option>
+                    <option value="18">18%</option>
+                    <option value="28">28%</option>
+                  </select>
+                </div>      
 
                 {/* Discount */}
                 <div>
@@ -1395,6 +1677,46 @@ export default function Products() {
                     placeholder="10"
                   />
                 </div>
+
+                {/* Prescription Required Toggle */}
+                <div className="flex items-center gap-2 md:col-span-2 p-3 border rounded-lg" style={{ borderColor: themeColors.border }}>
+                  <input
+                    id="prescriptionRequired"
+                    name="prescriptionRequired"
+                    type="checkbox"
+                    checked={form.prescriptionRequired}
+                    onChange={handleChange}
+                    className="h-5 w-5"
+                  />
+                  <div>
+                      <label
+                        htmlFor="prescriptionRequired"
+                        className="text-sm font-bold block"
+                        style={{ color: themeColors.text }}
+                      >
+                        Prescription Required?
+                      </label>
+                      <p className="text-xs opacity-70" style={{ color: themeColors.text }}>
+                         If checked, users must upload a prescription. Admin manually verifies it.
+                      </p>
+                  </div>
+                </div>
+
+                {/* CSV File Attachment (Placeholder for now) */}
+                 <div className="md:col-span-2 p-3 border border-dashed rounded-lg" style={{ borderColor: themeColors.border }}>
+                    <label className="text-sm font-bold block mb-1" style={{ color: themeColors.text }}> Attach CSV / Data File (Optional)</label>
+                    <input type="file" 
+                      accept=".csv"
+                      onChange={(e) => setCsvFile(e.target.files ? e.target.files[0] : null)}
+                      className="block w-full text-sm text-slate-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-violet-50 file:text-violet-700
+                      hover:file:bg-violet-100
+                    "/>
+                    {csvFile && <p className="text-xs text-green-600 mt-1">File selected: {csvFile.name} (Other fields will be ignored)</p>}
+                 </div>
 
                 {/* Description */}
                 <div className="md:col-span-2">
@@ -1917,69 +2239,112 @@ export default function Products() {
                 </div>
 
                 {/* Details section */}
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <p
-                      className="text-xs uppercase font-semibold mb-1"
-                      style={{ color: themeColors.text }}
-                    >
-                      Pricing
-                    </p>
-                    <div className="flex items-baseline gap-2">
-                      <span
-                        className="text-lg font-bold"
-                        style={{ color: themeColors.primary }}
-                      >
-                        {fmtCurrency(getFinalPrice(viewProduct))}
-                      </span>
-                      {viewProduct.discountPercent ? (
-                        <>
-                          <span className="line-through text-xs opacity-70">
-                            {fmtCurrency(viewProduct.price)}
-                          </span>
-                          <span
-                            className="text-xs font-semibold"
-                            style={{
-                              color:
-                                themeColors.success ||
-                                themeColors.primary,
-                            }}
-                          >
-                            {viewProduct.discountPercent}% OFF
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-xs opacity-70">
-                          {fmtCurrency(viewProduct.price)}
-                        </span>
-                      )}
-                    </div>
+                <div className="space-y-4 text-sm">
+                  
+                  {/* Manufacturer & Category */}
+                  <div className="grid grid-cols-2 gap-4">
+                     <div>
+                        <p className="text-xs uppercase font-semibold mb-1 opacity-70" style={{ color: themeColors.text }}>Category</p>
+                        <p className="font-medium" style={{ color: themeColors.text }}>
+                          {viewProduct.category?.name || viewProduct.categoryId?.name || categoryMap[viewProduct.categoryId] || "-"}
+                        </p>
+                     </div>
+                     <div>
+                        <p className="text-xs uppercase font-semibold mb-1 opacity-70" style={{ color: themeColors.text }}>Manufacturer</p>
+                        <p className="font-medium" style={{ color: themeColors.text }}>{viewProduct.manufacturer || "-"}</p>
+                     </div>
                   </div>
 
-                  <div>
-                    <p
-                      className="text-xs uppercase font-semibold mb-1"
-                      style={{ color: themeColors.text }}
-                    >
-                      Category
-                    </p>
-                    <p style={{ color: themeColors.text }}>
-                      {viewProduct.category?.name ||
-                        viewProduct.categoryId?.name ||
-                        categoryMap[viewProduct.categoryId] ||
-                        "-"}
-                    </p>
+                   {/* Batch & Expiry */}
+                  <div className="grid grid-cols-2 gap-4">
+                     <div>
+                        <p className="text-xs uppercase font-semibold mb-1 opacity-70" style={{ color: themeColors.text }}>Batch No</p>
+                        <p className="font-medium" style={{ color: themeColors.text }}>{viewProduct.batchNo || "-"}</p>
+                     </div>
+                     <div>
+                        <p className="text-xs uppercase font-semibold mb-1 opacity-70" style={{ color: themeColors.text }}>Expiry Date</p>
+                        <p className="font-medium" style={{ color: themeColors.text }}>{viewProduct.expiryDate ? fmtDate(viewProduct.expiryDate) : "-"}</p>
+                     </div>
                   </div>
+
+                  {/* Stock & Unit */}
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                        <p className="text-xs uppercase font-semibold mb-1 opacity-70" style={{ color: themeColors.text }}>Stock</p>
+                         <span className={`px-2 py-1 rounded text-xs font-bold ${viewProduct.stock < 10 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
+                            {viewProduct.stock || 0}
+                         </span>
+                     </div>
+                     <div>
+                        <p className="text-xs uppercase font-semibold mb-1 opacity-70" style={{ color: themeColors.text }}>Unit</p>
+                        <p className="font-medium" style={{ color: themeColors.text }}>{viewProduct.unit || "Pcs"}</p>
+                     </div>
+                  </div>
+
+                  {/* Pricing Details */}
+                  <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: themeColors.border, backgroundColor: themeColors.background + "40" }}>
+                      <p className="text-sm font-bold border-b pb-2 mb-2" style={{ borderColor: themeColors.border, color: themeColors.text }}>Pricing & Profit</p>
+                      
+                      <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                          <div>
+                            <p className="text-xs opacity-70">Item MRP</p>
+                            <p className="font-semibold">{fmtCurrency(viewProduct.mrp)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs opacity-70">Purchase Price</p>
+                            <p className="font-semibold">{fmtCurrency(viewProduct.purchasePrice)}</p>
+                          </div>
+                          
+                           <div>
+                            <p className="text-xs opacity-70">Selling Price</p>
+                            <p className="font-bold text-lg" style={{ color: themeColors.primary }}>{fmtCurrency(getFinalPrice(viewProduct))}</p>
+                             {viewProduct.discountPercent > 0 && (
+                                <span className="text-xs text-green-600 font-semibold">{viewProduct.discountPercent}% OFF</span>
+                             )}
+                          </div>
+                          
+                           <div>
+                            <p className="text-xs opacity-70">GST</p>
+                            <p className="font-semibold">{viewProduct.gst || 0}%</p>
+                          </div>
+
+                           <div className="col-span-2 pt-2 border-t mt-1" style={{ borderColor: themeColors.border }}>
+                              <p className="text-xs opacity-70">Calculated Margin / Profit</p>
+                              <p className="font-bold text-green-600">
+                                {viewProduct.purchasePrice && viewProduct.sellingPrice 
+                                   ? fmtCurrency(viewProduct.sellingPrice - viewProduct.purchasePrice)
+                                   : "-"
+                                } 
+                                {viewProduct.purchasePrice && viewProduct.sellingPrice && (
+                                   <span className="text-xs font-normal ml-1 opacity-80">
+                                      ({Math.round(((viewProduct.sellingPrice - viewProduct.purchasePrice) / viewProduct.purchasePrice) * 100)}%)
+                                   </span>
+                                )}
+                              </p>
+                           </div>
+                      </div>
+                  </div>
+                  
+                  {/* Prescription Status */}
+                   <div className="flex items-center gap-3 p-3 rounded-lg border" style={{ borderColor: themeColors.border }}>
+                      <div className={`w-3 h-3 rounded-full ${viewProduct.prescriptionRequired ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                      <div>
+                        <p className="text-xs font-bold" style={{ color: themeColors.text }}>Prescription Required?</p>
+                        <p className="text-xs opacity-70" style={{ color: themeColors.text }}>
+                          {viewProduct.prescriptionRequired ? "Yes - User must upload prescription" : "No - Available over the counter"}
+                        </p>
+                      </div>
+                   </div>
 
                   {viewProduct.description && (
                     <div>
                       <p
-                        className="text-xs uppercase font-semibold mb-1"
+                        className="text-xs uppercase font-semibold mb-1 opacity-70"
                         style={{ color: themeColors.text }}
                       >
                         Description
                       </p>
-                      <p style={{ color: themeColors.text }}>
+                      <p className="text-sm leading-relaxed" style={{ color: themeColors.text }}>
                         {viewProduct.description}
                       </p>
                     </div>
@@ -1988,13 +2353,13 @@ export default function Products() {
                   {viewProduct.about && (
                     <div>
                       <p
-                        className="text-xs uppercase font-semibold mb-1"
+                        className="text-xs uppercase font-semibold mb-1 opacity-70"
                         style={{ color: themeColors.text }}
                       >
                         About
                       </p>
                       <p
-                        className="text-xs"
+                        className="text-xs leading-relaxed"
                         style={{ color: themeColors.text }}
                       >
                         {viewProduct.about}
@@ -2006,7 +2371,7 @@ export default function Products() {
                     viewProduct.sizes.length > 0) && (
                     <div>
                       <p
-                        className="text-xs uppercase font-semibold mb-1"
+                        className="text-xs uppercase font-semibold mb-1 opacity-70"
                         style={{ color: themeColors.text }}
                       >
                         Sizes
@@ -2033,7 +2398,7 @@ export default function Products() {
                     viewProduct.colors.length > 0) && (
                     <div>
                       <p
-                        className="text-xs uppercase font-semibold mb-1"
+                        className="text-xs uppercase font-semibold mb-1 opacity-70"
                         style={{ color: themeColors.text }}
                       >
                         Colors
@@ -2060,45 +2425,38 @@ export default function Products() {
                     viewProduct.addOns.length > 0) && (
                     <div>
                       <p
-                        className="text-xs uppercase font-semibold mb-1"
+                        className="text-xs uppercase font-semibold mb-1 opacity-70"
                         style={{ color: themeColors.text }}
                       >
                         Add-ons
                       </p>
-                      <div className="flex flex-wrap gap-2">
+                       <ul className="space-y-1">
                         {viewProduct.addOns.map((a, i) => (
-                          <span
+                          <li
                             key={i}
-                            className="px-2 py-0.5 rounded-full text-[11px]"
-                            style={{
-                              backgroundColor: a.isDefault
-                                ? (themeColors.success ||
-                                    themeColors.primary) + "20"
-                                : themeColors.background + "60",
-                              color: themeColors.text,
-                            }}
+                            className="text-xs flex items-center gap-2"
+                             style={{ color: themeColors.text }}
                           >
-                            {a.name}{" "}
-                            {a.price
-                              ? `(+${fmtCurrency(a.price)})`
-                              : ""}
-                            {a.isDefault ? " • Default" : ""}
-                          </span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                            {a.name} 
+                            {a.price ? <span className="font-semibold">(+{fmtCurrency(a.price)})</span> : ""}
+                            {a.isDefault && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 rounded">Default</span>}
+                          </li>
                         ))}
-                      </div>
+                      </ul>
                     </div>
                   )}
 
-                  <div className="pt-2 text-xs opacity-70 space-y-1">
+                  <div className="pt-2 text-xs opacity-50 space-y-1 border-t mt-4" style={{ borderColor: themeColors.border }}>
                     <p style={{ color: themeColors.text }}>
                       Created:{" "}
                       {viewProduct.createdAt
-                        ? fmtDate(viewProduct.createdAt)
+                        ? new Date(viewProduct.createdAt).toLocaleString("en-IN")
                         : "-"}
                     </p>
                     {viewProduct.updatedAt && (
                       <p style={{ color: themeColors.text }}>
-                        Updated: {fmtDate(viewProduct.updatedAt)}
+                        Last Updated: {new Date(viewProduct.updatedAt).toLocaleString("en-IN")}
                       </p>
                     )}
                   </div>

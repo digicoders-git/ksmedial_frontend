@@ -345,6 +345,7 @@ export default function Orders() {
                   "Offer",
                   "Status",
                   "Payment",
+                  "Prescription",
                   "Created",
                 ].map((h) => (
                   <th
@@ -521,6 +522,22 @@ export default function Orders() {
                             {o.paymentStatus || "pending"}
                           </span>
                         </div>
+                      </td>
+
+                      {/* Prescription */}
+                      <td className="px-4 py-2 text-xs">
+                        {o.prescriptionImage && o.prescriptionImage.url ? (
+                          <a
+                            href={o.prescriptionImage.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 underline hover:text-blue-700 font-semibold"
+                          >
+                            View Rx
+                          </a>
+                        ) : (
+                          <span className="opacity-50 text-gray-400">-</span>
+                        )}
                       </td>
 
                       {/* Created */}

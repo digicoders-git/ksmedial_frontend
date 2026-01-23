@@ -29,3 +29,11 @@ export const deleteProduct = async (idOrSlug) => {
   const { data } = await http.delete(`/api/products/${idOrSlug}`);
   return data;
 };
+
+// Admin: bulk upload - POST /api/products/bulk-upload
+export const bulkUploadProduct = async (formData) => {
+  const { data } = await http.post("/api/products/bulk-upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};

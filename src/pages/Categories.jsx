@@ -30,6 +30,8 @@ const emptyForm = {
   name: "",
   slug: "",
   description: "",
+  defaultUnit: "Pcs",
+  gst: 0,
   isActive: true,
 };
 
@@ -99,6 +101,8 @@ export default function Categories() {
       name: cat.name || "",
       slug: cat.slug || "",
       description: cat.description || "",
+      defaultUnit: cat.defaultUnit || "Pcs",
+      gst: cat.gst || 0,
       isActive: typeof cat.isActive === "boolean" ? cat.isActive : true,
     });
     setSuccess("");
@@ -239,6 +243,8 @@ export default function Categories() {
       // slug optional: backend may auto-generate
       ...(form.slug.trim() && { slug: form.slug.trim() }),
       description: form.description.trim(),
+      defaultUnit: form.defaultUnit.trim(),
+      gst: Number(form.gst),
       isActive: form.isActive,
     };
 
@@ -449,7 +455,7 @@ export default function Categories() {
                   backgroundColor: themeColors.background + "30",
                 }}
               >
-                {["Name", "Slug", "Description", "Status", "Created", "Actions"].map(
+                {["Name", "Slug", "Default Unit", "GST %", "Status", "Created", "Actions"].map(
                   (h) => (
                     <th
                       key={h}
@@ -505,7 +511,19 @@ export default function Categories() {
                       className="px-4 py-2 text-xs"
                       style={{ color: themeColors.text }}
                     >
-                      {cat.description || "-"}
+                      {cat.slug || "-"}
+                    </td>
+                    <td
+                      className="px-4 py-2 text-xs"
+                      style={{ color: themeColors.text }}
+                    >
+                      {cat.defaultUnit || "-"}
+                    </td>
+                    <td
+                      className="px-4 py-2 text-xs"
+                      style={{ color: themeColors.text }}
+                    >
+                      {cat.gst}%
                     </td>
                     <td className="px-4 py-2">
                       <span
@@ -599,24 +617,35 @@ export default function Categories() {
       </div>
 
       {/* Add / Edit Modal */}
+      {/* Add / Edit Modal - Premium Design */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300">
           <div
-            className="w-full max-w-lg mx-4 rounded-2xl shadow-lg border"
+            className="w-full max-w-2xl rounded-2xl shadow-2xl border transform scale-100 transition-all duration-300 overflow-hidden"
             style={{
               backgroundColor: themeColors.surface,
               borderColor: themeColors.border,
+              animation: "slideIn 0.3s ease-out",
             }}
           >
+            {/* Modal Header */}
             <div
-              className="flex items-center justify-between px-6 py-4 border-b"
-              style={{ borderColor: themeColors.border }}
+              className="flex items-center justify-between px-6 py-5 border-b"
+              style={{ 
+                borderColor: themeColors.border,
+                background: `linear-gradient(to right, ${themeColors.surface}, ${themeColors.background}80)` 
+              }}
             >
               <h2
-                className="text-lg font-semibold flex items-center gap-2"
+                className="text-xl font-bold flex items-center gap-3"
                 style={{ color: themeColors.text }}
               >
-                <FaPlus />
+                <div 
+                  className="p-2 rounded-lg"
+                  style={{ backgroundColor: themeColors.primary + "20", color: themeColors.primary }}
+                >
+                  <FaPlus />
+                </div>
                 {editing ? "Edit Category" : "Add New Category"}
               </h2>
               <button
@@ -624,131 +653,229 @@ export default function Categories() {
                   setIsModalOpen(false);
                   resetForm();
                 }}
-                className="text-xl leading-none px-2"
-                style={{ color: themeColors.text }}
+                className="p-2 rounded-full hover:bg-black/5 transition-colors"
+                style={{ color: themeColors.textSecondary }}
               >
-                ×
+                ✕
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
-              {/* (Optional) show error inside modal */}
-              {error && (
-                <div
-                  className="p-2 rounded-lg text-xs border"
-                  style={{
-                    backgroundColor: themeColors.danger + "15",
-                    borderColor: themeColors.danger + "50",
-                    color: themeColors.danger,
-                  }}
-                >
-                  {error}
+            <form onSubmit={handleSubmit}>
+              <div 
+                className="px-8 py-6 space-y-6 overflow-y-auto max-h-[70vh]"
+                style={{ scrollbarWidth: 'thin' }}
+              >
+                {/* Error Message */}
+                {error && (
+                  <div
+                    className="p-4 rounded-xl text-sm border flex items-center gap-3"
+                    style={{
+                      backgroundColor: themeColors.danger + "10",
+                      borderColor: themeColors.danger + "30",
+                      color: themeColors.danger,
+                    }}
+                  >
+                    <div className="w-1 h-8 rounded-full" style={{ backgroundColor: themeColors.danger }}></div>
+                    {error}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Name */}
+                  <div className="col-span-2 md:col-span-1">
+                    <label
+                      htmlFor="name"
+                      className="block mb-2 text-sm font-semibold tracking-wide"
+                      style={{ color: themeColors.textSecondary }}
+                    >
+                      Category Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="name"
+                      name="name"
+                      type="text"
+                      value={form.name}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all shadow-sm"
+                      style={{
+                        backgroundColor: themeColors.background,
+                        borderColor: themeColors.border,
+                        color: themeColors.text,
+                        "--tw-ring-color": themeColors.primary
+                      }}
+                      placeholder="e.g. Medicines"
+                    />
+                  </div>
+
+                  {/* Slug */}
+                  <div className="col-span-2 md:col-span-1">
+                    <label
+                      htmlFor="slug"
+                      className="block mb-2 text-sm font-semibold tracking-wide"
+                      style={{ color: themeColors.textSecondary }}
+                    >
+                      Slug <span className="text-xs font-normal opacity-70">(Auto-generated if empty)</span>
+                    </label>
+                    <input
+                      id="slug"
+                      name="slug"
+                      type="text"
+                      value={form.slug}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all shadow-sm"
+                      style={{
+                        backgroundColor: themeColors.background,
+                        borderColor: themeColors.border,
+                        color: themeColors.text,
+                         "--tw-ring-color": themeColors.primary
+                      }}
+                      placeholder="e.g. medicines"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div className="col-span-2">
+                    <label
+                      htmlFor="description"
+                      className="block mb-2 text-sm font-semibold tracking-wide"
+                      style={{ color: themeColors.textSecondary }}
+                    >
+                      Description
+                    </label>
+                    <textarea
+                      id="description"
+                      name="description"
+                      value={form.description}
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 resize-none transition-all shadow-sm"
+                      style={{
+                        backgroundColor: themeColors.background,
+                        borderColor: themeColors.border,
+                        color: themeColors.text,
+                         "--tw-ring-color": themeColors.primary
+                      }}
+                      placeholder="Briefly describe what this category contains..."
+                    />
+                  </div>
+
+                  {/* Default Unit */}
+                  <div>
+                    <label
+                      htmlFor="defaultUnit"
+                      className="block mb-2 text-sm font-semibold tracking-wide"
+                      style={{ color: themeColors.textSecondary }}
+                    >
+                      Default Unit
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="defaultUnit"
+                        name="defaultUnit"
+                        value={form.defaultUnit}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 rounded-xl border text-sm appearance-none focus:outline-none focus:ring-2 transition-all shadow-sm"
+                        style={{
+                          backgroundColor: themeColors.background,
+                          borderColor: themeColors.border,
+                          color: themeColors.text,
+                           "--tw-ring-color": themeColors.primary
+                        }}
+                      >
+                        <option value="Pcs">Pcs</option>
+                        <option value="Box">Box</option>
+                        <option value="Kg">Kg</option>
+                        <option value="Ltr">Ltr</option>
+                        <option value="Gm">Gm</option>
+                        <option value="Strip">Strip</option>
+                        <option value="Bottle">Bottle</option>
+                        <option value="Pack">Pack</option>
+                      </select>
+                       <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none opacity-50">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* GST % */}
+                  <div>
+                    <label
+                      htmlFor="gst"
+                      className="block mb-2 text-sm font-semibold tracking-wide"
+                      style={{ color: themeColors.textSecondary }}
+                    >
+                      GST %
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="gst"
+                        name="gst"
+                        value={form.gst}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 rounded-xl border text-sm appearance-none focus:outline-none focus:ring-2 transition-all shadow-sm"
+                        style={{
+                          backgroundColor: themeColors.background,
+                          borderColor: themeColors.border,
+                          color: themeColors.text,
+                           "--tw-ring-color": themeColors.primary
+                        }}
+                      >
+                        <option value={0}>0% (Tax Free)</option>
+                        <option value={5}>5%</option>
+                        <option value={12}>12%</option>
+                        <option value={18}>18%</option>
+                        <option value={28}>28%</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none opacity-50">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              {/* Name */}
-              <div>
-                <label
-                  htmlFor="name"
-                  className="block mb-1 text-sm font-medium"
-                  style={{ color: themeColors.text }}
-                >
-                  Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  value={form.name}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
+                {/* Status Toggle - Premium */}
+                <div 
+                  className="mt-6 p-4 rounded-xl border flex items-center justify-between"
                   style={{
                     backgroundColor: themeColors.background,
                     borderColor: themeColors.border,
-                    color: themeColors.text,
                   }}
-                  placeholder="e.g. Medicines"
-                />
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold" style={{ color: themeColors.text }}>Category Status</span>
+                    <span className="text-xs opacity-60" style={{ color: themeColors.text }}>Toggle whether this category is visible</span>
+                  </div>
+                  
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      name="isActive"
+                      checked={form.isActive}
+                      onChange={handleChange}
+                    />
+                    <div 
+                      className="w-11 h-6 rounded-full peer peer-focus:ring-2 peer-focus:ring-offset-2 transition-colors duration-200"
+                      style={{ 
+                        backgroundColor: form.isActive ? themeColors.success || themeColors.primary : "#e5e7eb",
+                        "--tw-ring-color": themeColors.primary 
+                      }}
+                    ></div>
+                    <div className="absolute top-0.5 left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform peer-checked:translate-x-full"></div>
+                  </label>
+                </div>
+
               </div>
 
-              {/* Slug */}
-              <div>
-                <label
-                  htmlFor="slug"
-                  className="block mb-1 text-sm font-medium"
-                  style={{ color: themeColors.text }}
-                >
-                  Slug (optional)
-                </label>
-                <input
-                  id="slug"
-                  name="slug"
-                  type="text"
-                  value={form.slug}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                  style={{
-                    backgroundColor: themeColors.background,
-                    borderColor: themeColors.border,
-                    color: themeColors.text,
-                  }}
-                  placeholder="e.g. medicines"
-                />
-                <p
-                  className="text-xs mt-1 opacity-70"
-                  style={{ color: themeColors.text }}
-                >
-                  Leave blank to let the system generate a slug.
-                </p>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label
-                  htmlFor="description"
-                  className="block mb-1 text-sm font-medium"
-                  style={{ color: themeColors.text }}
-                >
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 resize-none"
-                  style={{
-                    backgroundColor: themeColors.background,
-                    borderColor: themeColors.border,
-                    color: themeColors.text,
-                  }}
-                  placeholder="Medical category description..."
-                />
-              </div>
-
-              {/* Active */}
-              <div className="flex items-center gap-2">
-                <input
-                  id="isActive"
-                  name="isActive"
-                  type="checkbox"
-                  checked={form.isActive}
-                  onChange={handleChange}
-                  className="h-4 w-4"
-                />
-                <label
-                  htmlFor="isActive"
-                  className="text-sm"
-                  style={{ color: themeColors.text }}
-                >
-                  Active
-                </label>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 justify-end pt-2">
+              {/* Footer Actions */}
+              <div 
+                className="px-8 py-5 border-t flex items-center justify-end gap-3"
+                style={{ 
+                  borderColor: themeColors.border,
+                  backgroundColor: themeColors.background + "40"
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => {
@@ -756,11 +883,11 @@ export default function Categories() {
                     resetForm();
                   }}
                   disabled={saving}
-                  className="px-3 py-2 rounded-lg text-sm border disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl text-sm font-medium border transition-all hover:opacity-80 disabled:opacity-50"
                   style={{
-                    backgroundColor: themeColors.surface,
                     borderColor: themeColors.border,
                     color: themeColors.text,
+                    backgroundColor: "transparent"
                   }}
                 >
                   Cancel
@@ -768,18 +895,22 @@ export default function Categories() {
                 <button
                   type="submit"
                   disabled={saving || !isLoggedIn}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-8 py-2.5 rounded-xl text-sm font-bold shadow-lg transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
                   style={{
                     backgroundColor: themeColors.primary,
                     color: themeColors.onPrimary,
+                    boxShadow: `0 4px 12px ${themeColors.primary}40`
                   }}
                 >
                   {saving
-                    ? editing
-                      ? "Saving..."
-                      : "Creating..."
+                    ? (
+                      <span className="flex items-center gap-2">
+                         <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                         Saving...
+                      </span>
+                    )
                     : editing
-                    ? "Save Changes"
+                    ? "Update Category"
                     : "Create Category"}
                 </button>
               </div>

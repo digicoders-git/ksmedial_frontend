@@ -25,7 +25,7 @@ const ReferalStatCard = (props) => {
 const ReferalDashboard = () => {
   const [referalData, setReferalData] = useState({
     referralCode: "",
-    totalReferrals: 0,
+    totalReferrals: 0,   
     activeReferrals: 0,
     totalEarnings: 0,
     availableBalance: 0,
@@ -37,20 +37,22 @@ const ReferalDashboard = () => {
     recentTransactions: []
   });
   const { theme, themeColors } = useTheme();
-  const { admin } = useAuth();
+  const { admin, token } = useAuth();
   const [loading, setLoading] = useState(true);
 
   // Fetch Referal dashboard data
   useEffect(() => {
-    fetchReferalData();
-  }, []);
+    if (admin?.id || admin?.adminId) {
+       fetchReferalData();
+    } else {
+       setLoading(false);
+    }
+  }, [admin, token]);
 
   const fetchReferalData = async () => {
     try {
       setLoading(true);
-      // TODO: Admin viewing User data requires valid User ID (Admin ID != User ID)
-      const userId = "696201cc6b80633495c40ae0";
-      // const userId = admin?.id;
+      const userId = admin?.id || admin?.adminId;
       
       if (!userId) {
         setLoading(false);
@@ -63,23 +65,29 @@ const ReferalDashboard = () => {
         return; 
       }
       
-      const response = await fetch(API_ENDPOINTS.REFERAL.DASHBOARD(userId));
+      const response = await fetch(API_ENDPOINTS.REFERAL.DASHBOARD(userId), {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+      
       const text = await response.text();
       let data;
       try {
         data = JSON.parse(text);
       } catch {
-        throw new Error("Server returned an invalid response");
+         // Fallback if parsing fails
       }
       
-      if (response.ok) {
+      if (response.ok && data) {
         setReferalData(data);
       } else {
-        toast.error(data.message || "Failed to fetch Referal data");
+        // Silent fail or toast only if explicitly needed, to avoid spam on initial load issues
+        console.error(data?.message || "Failed to fetch Referal data");
       }
     } catch (error) {
       console.error("Fetch Referal data error:", error);
-      toast.error(error.message || "Failed to fetch Referal data");
     } finally {
       setLoading(false);
     }
@@ -103,12 +111,13 @@ const ReferalDashboard = () => {
     );
   }
 
-  // Check for admin/user login - Disabled for demo
-  if (!admin?.id && false) {
+  // Check for admin/user login
+  if (!admin?.id && !admin?.adminId) {
     return (
        <div className="min-h-screen p-6 flex items-center justify-center" style={{ backgroundColor: themeColors.background }}>
         <div className="p-8 rounded-xl shadow-lg text-center max-w-md" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
           <h2 className="text-xl font-bold mb-2" style={{ color: themeColors.text }}>Please Log In</h2>
+           <p style={{ color: themeColors.textSecondary }}>You must be logged in to view the referral dashboard.</p>
         </div>
       </div>
     );
