@@ -28,8 +28,8 @@ export const API_ENDPOINTS = {
     STATS: `${API_BASE_URL}/api/withdrawals/stats`,
   },
 
-  // MLM Endpoints
-  MLM: {
+  // Referal Endpoints
+  REFERAL: {
     DASHBOARD: (userId) => `${API_BASE_URL}/api/mlm/dashboard/${userId}`,
     REFERRALS: (userId) => `${API_BASE_URL}/api/mlm/referrals/${userId}`,
     TRANSACTIONS: (userId) => `${API_BASE_URL}/api/mlm/transactions/${userId}`,

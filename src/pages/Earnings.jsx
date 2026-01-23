@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { API_ENDPOINTS, buildUrl, isValidObjectId } from "../config/api";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 
 const StatCard = (props) => {
   const { icon: Icon, title, value, subtitle, color, bgColor, trend, theme, themeColors } = props;
@@ -42,6 +43,7 @@ const StatCard = (props) => {
 
 const Earnings = () => {
   const { theme, themeColors } = useTheme();
+  const { admin } = useAuth();
   const [earningsData, setEarningsData] = useState({
     totalEarnings: 0,
     availableBalance: 0,
@@ -67,10 +69,18 @@ const Earnings = () => {
   const fetchEarningsData = async () => {
     try {
       setLoading(true);
-      // TODO: Get userId from auth context
-      const userId = "65a1b2c3d4e5f6a7b8c9d0e1";
+      // TODO: In a real app, Admin should SELECT a user to view.
+      // Since Admin ID != User ID, we use a valid Test User ID for demonstration.
+      const userId = "696201cc6b80633495c40ae0"; 
       
-      const response = await fetch(API_ENDPOINTS.MLM.DASHBOARD(userId));
+      // const userId = admin?.id; // This fails because Admin is not a User
+      
+      if (!userId || !isValidObjectId(userId)) {
+        setLoading(false);
+        return;
+      }
+      
+      const response = await fetch(API_ENDPOINTS.REFERAL.DASHBOARD(userId));
       const data = await response.json();
       
       if (response.ok) {
@@ -95,11 +105,15 @@ const Earnings = () => {
 
   const fetchTransactions = async () => {
     try {
-      // TODO: Get userId from auth context
-      const userId = "65a1b2c3d4e5f6a7b8c9d0e1";
+      // const userId = admin?.id;
+      const userId = "696201cc6b80633495c40ae0";
+      
+      if (!userId || !isValidObjectId(userId)) {
+        return;
+      }
       
       const response = await fetch(
-        buildUrl(API_ENDPOINTS.MLM.TRANSACTIONS(userId), { type: typeFilter, limit: 100 })
+        buildUrl(API_ENDPOINTS.REFERAL.TRANSACTIONS(userId), { type: typeFilter, limit: 100 })
       );
       const data = await response.json();
       
@@ -226,30 +240,12 @@ const Earnings = () => {
     );
   }
 
-  const testUserId = "65a1b2c3d4e5f6a7b8c9d0e1";
-  if (!isValidObjectId(testUserId)) {
+  // Check for admin/user login - For now just show the component since we use test ID
+  if (!admin?.id && false) { // Disabled check for demo
     return (
-      <div className="min-h-screen p-6 flex items-center justify-center" style={{ backgroundColor: themeColors.background }}>
+       <div className="min-h-screen p-6 flex items-center justify-center" style={{ backgroundColor: themeColors.background }}>
         <div className="p-8 rounded-xl shadow-lg text-center max-w-md" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
-          <div className="text-red-500 text-5xl mb-4 text-center flex justify-center">⚠️</div>
-          <h2 className="text-2xl font-bold mb-2" style={{ color: themeColors.text }}>Invalid Session</h2>
-          <p className="mb-6" style={{ color: themeColors.textSecondary }}>
-            Your User ID format is invalid (<b>{testUserId}</b>). MongoDB expects a 24-character hex ID.
-          </p>
-          <div className="p-4 rounded-lg text-left text-sm mb-6" style={{ backgroundColor: themeColors.primary + "10", color: themeColors.primary }}>
-            <p className="font-bold mb-1">How to fix:</p>
-            <ol className="list-decimal ml-4">
-              <li>Log in with a real account</li>
-              <li>Or seed the database to get a test ID</li>
-            </ol>
-          </div>
-          <button 
-            onClick={() => window.location.reload()}
-            className="w-full text-white py-2 rounded-lg font-medium transition-colors hover:opacity-90"
-            style={{ backgroundColor: themeColors.primary }}
-          >
-            Retry Connection
-          </button>
+          <h2 className="text-xl font-bold mb-2" style={{ color: themeColors.text }}>Please Log In</h2>
         </div>
       </div>
     );

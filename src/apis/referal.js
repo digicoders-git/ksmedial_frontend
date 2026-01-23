@@ -1,7 +1,7 @@
 import { apiClient } from "./http";
 
-// MLM Dashboard APIs
-export const getMLMDashboard = async () => {
+// Referal Dashboard APIs
+export const getReferalDashboard = async () => {
   try {
     const response = await apiClient.get("/mlm/dashboard");
     return response.data;
@@ -170,8 +170,8 @@ export const cancelWithdrawal = async (withdrawalId) => {
   }
 };
 
-// MLM Statistics APIs
-export const getMLMStats = async (period = "month") => {
+// Referal Statistics APIs
+export const getReferalStats = async (period = "month") => {
   try {
     const response = await apiClient.get(`/mlm/stats?period=${period}`);
     return response.data;
@@ -247,7 +247,7 @@ export const getRankRequirements = async () => {
 };
 
 // Notification APIs
-export const getMLMNotifications = async (params = {}) => {
+export const getReferalNotifications = async (params = {}) => {
   try {
     const response = await apiClient.get("/mlm/notifications", { params });
     return response.data;

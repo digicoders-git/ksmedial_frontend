@@ -68,7 +68,7 @@ const Tasks = () => {
     {
       id: 6,
       title: "Complete Training Module",
-      description: "Complete the MLM training course and pass the quiz with 80% score",
+      description: "Complete the Referal training course and pass the quiz with 80% score",
       reward: 1500,
       timeRequired: "3 hours",
       difficulty: "Hard",

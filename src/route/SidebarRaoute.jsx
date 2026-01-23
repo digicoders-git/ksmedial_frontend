@@ -26,8 +26,8 @@ const Sliders = lazy(() => import("../pages/Sliders"));
 const Blogs = lazy(() => import("../pages/Blogs"));
 const ChangePassword = lazy(() => import("../pages/ChangePassword"));
 
-// MLM pages
-const MLMDashboard = lazy(() => import("../pages/MLMDashboard"));
+// Referal pages
+const ReferalDashboard = lazy(() => import("../pages/ReferalDashboard"));
 const Referrals = lazy(() => import("../pages/Referrals"));
 const Earnings = lazy(() => import("../pages/Earnings"));
 const Withdrawal = lazy(() => import("../pages/Withdrawal"));
@@ -36,8 +36,8 @@ const KYCApproval = lazy(() => import("../pages/KYCApproval"));
 const routes = [
   { path: "/dashboard", component: Dashboard, name: "Dashboard", icon: FaTachometerAlt },
   
-  // MLM System
-  { path: "/mlm-dashboard", component: MLMDashboard, name: "MLM Dashboard", icon: FaNetworkWired },
+  // Referal System
+  { path: "/referal-dashboard", component: ReferalDashboard, name: "Referal Dashboard", icon: FaNetworkWired },
   { path: "/referrals", component: Referrals, name: "My Referrals", icon: FaUsers },
   { path: "/earnings", component: Earnings, name: "Earnings", icon: FaCoins },
   { path: "/kyc-approval", component: KYCApproval, name: "KYC Approval", icon: FaIdCard },

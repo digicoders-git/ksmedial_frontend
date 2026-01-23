@@ -3,9 +3,11 @@ import { FaUsers, FaEye, FaCoins, FaCalendar, FaSearch } from "react-icons/fa";
 import { toast } from "sonner";
 import { API_ENDPOINTS, isValidObjectId } from "../config/api";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 
 const Referrals = () => {
   const { theme, themeColors } = useTheme();
+  const { admin } = useAuth();
   const [referrals, setReferrals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,15 +27,22 @@ const Referrals = () => {
     const fetchReferralsData = async () => {
       try {
         setLoading(true);
-        // TODO: Get userId from auth context
-        const userId = "65a1b2c3d4e5f6a7b8c9d0e1"; // Replace with actual user ID from auth
+        // TODO: Use valid test User ID because Admin ID != User ID
+        const userId = "696201cc6b80633495c40ae0";
+        // const userId = admin?.id;
         
-        if (!isValidObjectId(userId)) {
+        if (!userId) {
           setLoading(false);
           return;
         }
         
-        const response = await fetch(API_ENDPOINTS.MLM.REFERRALS(userId));
+        if (!isValidObjectId(userId)) {
+          console.error("Invalid User ID:", userId);
+          setLoading(false);
+          return;
+        }
+        
+        const response = await fetch(API_ENDPOINTS.REFERAL.REFERRALS(userId));
         const text = await response.text();
         let data;
         try {
@@ -57,7 +66,7 @@ const Referrals = () => {
     };
 
     fetchReferralsData();
-  }, []);
+  }, [admin]);
 
   const calculateStats = (referralsList) => {
     const total = referralsList.length;
@@ -112,30 +121,11 @@ const Referrals = () => {
     );
   }
 
-  const testUserId = "65a1b2c3d4e5f6a7b8c9d0e1";
-  if (!isValidObjectId(testUserId)) {
+  if (!admin?.id && false) {
     return (
-      <div className="min-h-screen p-6 flex items-center justify-center" style={{ backgroundColor: themeColors.background }}>
+       <div className="min-h-screen p-6 flex items-center justify-center" style={{ backgroundColor: themeColors.background }}>
         <div className="p-8 rounded-xl shadow-lg text-center max-w-md" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
-          <div className="text-red-500 text-5xl mb-4 text-center flex justify-center">⚠️</div>
-          <h2 className="text-2xl font-bold mb-2" style={{ color: themeColors.text }}>Invalid Session</h2>
-          <p className="mb-6" style={{ color: themeColors.textSecondary }}>
-            Your User ID format is invalid (<b>{testUserId}</b>). MongoDB expects a 24-character hex ID.
-          </p>
-          <div className="p-4 rounded-lg text-left text-sm mb-6" style={{ backgroundColor: themeColors.primary + "10", color: themeColors.primary }}>
-            <p className="font-bold mb-1">How to fix:</p>
-            <ol className="list-decimal ml-4">
-              <li>Log in with a real account</li>
-              <li>Or seed the database to get a test ID</li>
-            </ol>
-          </div>
-          <button 
-            onClick={() => window.location.reload()}
-            className="w-full text-white py-2 rounded-lg font-medium transition-colors hover:opacity-90"
-            style={{ backgroundColor: themeColors.primary }}
-          >
-            Retry Connection
-          </button>
+          <h2 className="text-xl font-bold mb-2" style={{ color: themeColors.text }}>Please Log In</h2>
         </div>
       </div>
     );
