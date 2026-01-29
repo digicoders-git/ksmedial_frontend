@@ -13,6 +13,7 @@ import {
   FaWallet,
   FaMoneyBillWave,
   FaIdCard,
+  FaStore,
 } from "react-icons/fa";
 
 // pages
@@ -25,6 +26,7 @@ const Enquiries = lazy(() => import("../pages/Enquiries"));
 const Sliders = lazy(() => import("../pages/Sliders"));
 const Blogs = lazy(() => import("../pages/Blogs"));
 const ChangePassword = lazy(() => import("../pages/ChangePassword"));
+const Shops = lazy(() => import("../pages/Shops"));
 
 // Referal pages
 const ReferalDashboard = lazy(() => import("../pages/ReferalDashboard"));
@@ -46,6 +48,7 @@ const routes = [
   // E-commerce
   { path: "/categories", component: Categories, name: "Categories", icon: FaBox },
   { path: "/products", component: Products, name: "Products", icon: FaBox },
+  { path: "/shops", component: Shops, name: "Shops", icon: FaStore },
   { path: "/offers", component: Offers, name: "Offers", icon: FaWallet },
   { path: "/orders", component: Orders, name: "Orders", icon: FaShoppingCart },
   { path: "/enquiries", component: Enquiries, name: "Enquiries", icon: FaEnvelopeOpenText },
