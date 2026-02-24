@@ -8,9 +8,17 @@ import {
   FaShoppingCart,
   FaSyncAlt,
   FaSearch,
+  FaFilter,
+  FaShippingFast,
+  FaCheckCircle,
+  FaClock,
+  FaTimesCircle,
+  FaMapMarkerAlt,
+  FaBox,
+  FaInfoCircle
 } from "react-icons/fa";
+import { toast } from "sonner";
 import Swal from "sweetalert2";
-import "sweetalert2/dist/sweetalert2.min.css";
 
 const fmtDateTime = (iso) =>
   iso
@@ -25,13 +33,10 @@ const fmtCurrency = (n) =>
     ? `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
     : n ?? "-";
 
-// Possible order statuses (assumption)
 const STATUS_OPTIONS = [
-  "pending",
-  "confirmed",
-  "shipped",
-  "delivered",
-  "cancelled",
+  "pending", "confirmed", "shipped", "delivered", "cancelled", 
+  "Picking", "On Hold", "Packing", "Problem Queue", "Billing",
+  "Picklist Generated", "Quality Check", "Scanned For Shipping", "Unallocated"
 ];
 
 export default function Orders() {
@@ -41,26 +46,20 @@ export default function Orders() {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [search, setSearch] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const fetchOrders = async () => {
     try {
-      setLoading(true);
-      setError("");
+      setRefreshing(true);
       const list = await listOrders();
-      setOrders(list);
-    } catch (e) {
-      setError(
-        e?.response?.data?.message ||
-          e?.message ||
-          "Failed to load orders."
-      );
+      setOrders(Array.isArray(list) ? list : list.orders || []);
+    } catch {
+      toast.error("Failed to load ecosystem orders");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -68,491 +67,171 @@ export default function Orders() {
     fetchOrders();
   }, []);
 
-  const handleStatusChange = async (order, newStatus) => {
-    if (!isLoggedIn) {
-      setError("You must be logged in as admin to update status.");
-      return;
-    }
-
-    if (!newStatus || newStatus === order.status) return;
-
-    const result = await Swal.fire({
-      title: "Change order status?",
-      text: `Order ${order._id} status will be changed from "${order.status}" to "${newStatus}".`,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#2563eb",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Yes, update",
-    });
-
-    if (!result.isConfirmed) return;
-
+  const handleUpdate = async (orderId, updateData) => {
     try {
-      setSaving(true);
-      setError("");
-      setSuccess("");
-
-      await updateOrderStatus(order._id || order.id, newStatus);
-
-      // local state update
-      setOrders((prev) =>
-        prev.map((o) =>
-          (o._id || o.id) === (order._id || order.id)
-            ? { ...o, status: newStatus }
-            : o
-        )
-      );
-
-      setSuccess("Order status updated successfully.");
-      Swal.fire({
-        icon: "success",
-        title: "Updated",
-        text: "Order status updated successfully.",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-    } catch (e) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        "Failed to update order status.";
-      setError(msg);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: msg,
-      });
-    } finally {
-      setSaving(false);
+      await updateOrderStatus(orderId, updateData);
+      setOrders(prev => prev.map(o => (o._id || o.id) === orderId ? { ...o, ...updateData } : o));
+      toast.success("Order metrics synchronized");
+    } catch {
+      toast.error("Inbound update failed");
     }
   };
 
   const filteredOrders = useMemo(() => {
     let list = orders;
-
     if (statusFilter !== "all") {
       list = list.filter((o) => o.status === statusFilter);
     }
+    if (!searchTerm.trim()) return list;
+    const q = searchTerm.toLowerCase();
+    return list.filter((o) => 
+      (o._id || o.id || "").toLowerCase().includes(q) ||
+      (o.shippingAddress?.name || "").toLowerCase().includes(q) ||
+      (o.shippingAddress?.phone || "").toLowerCase().includes(q) ||
+      (o.orderNumber || "").toLowerCase().includes(q)
+    );
+  }, [orders, searchTerm, statusFilter]);
 
-    if (!search.trim()) return list;
-    const q = search.toLowerCase();
-
-    return list.filter((o) => {
-      const id = (o._id || o.id || "").toLowerCase();
-      const userId = (o.userId || "").toLowerCase();
-      const offerCode = (o.offerCode || "").toLowerCase();
-      const name = (o.shippingAddress?.name || "").toLowerCase();
-      const phone = (o.shippingAddress?.phone || "").toLowerCase();
-      return (
-        id.includes(q) ||
-        userId.includes(q) ||
-        offerCode.includes(q) ||
-        name.includes(q) ||
-        phone.includes(q)
-      );
-    });
-  }, [orders, search, statusFilter]);
-
-  const statusBadgeStyle = (status) => {
-    const base = {
-      padding: "2px 8px",
-      borderRadius: "999px",
-      fontSize: "0.75rem",
-      fontWeight: 600,
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-    };
-
-    switch (status) {
-      case "confirmed":
-        return {
-          ...base,
-          backgroundColor:
-            (themeColors.success || themeColors.primary) + "20",
-          color: themeColors.success || themeColors.primary,
-        };
-      case "shipped":
-        return {
-          ...base,
-          backgroundColor: "#0ea5e920",
-          color: "#0ea5e9",
-        };
-      case "delivered":
-        return {
-          ...base,
-          backgroundColor: "#22c55e20",
-          color: "#22c55e",
-        };
-      case "cancelled":
-        return {
-          ...base,
-          backgroundColor: themeColors.danger + "20",
-          color: themeColors.danger,
-        };
-      default: // pending
-        return {
-          ...base,
-          backgroundColor: themeColors.background + "80",
-          color: themeColors.text,
-        };
-    }
+  const getStatusConfig = (status) => {
+    const s = status?.toLowerCase() || "pending";
+    if (["delivered", "quality check"].includes(s)) return { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100", icon: <FaCheckCircle /> };
+    if (["shipped", "scanned for shipping"].includes(s)) return { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-100", icon: <FaShippingFast /> };
+    if (["cancelled", "problem queue"].includes(s)) return { bg: "bg-red-50", text: "text-red-600", border: "border-red-100", icon: <FaTimesCircle /> };
+    if (["packing", "picking", "picklist generated"].includes(s)) return { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", icon: <FaBox /> };
+    return { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200", icon: <FaClock /> };
   };
 
   return (
-    <div
-      className="space-y-6"
-      style={{ fontFamily: currentFont.family }}
-    >
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1
-            className="text-2xl font-bold flex items-center gap-2"
-            style={{ color: themeColors.text }}
-          >
-            <FaShoppingCart />
-            Orders
-          </h1>
-         
-        </div>
-
-        {/* Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Status filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg border text-sm"
-            style={{
-              backgroundColor: themeColors.surface,
-              borderColor: themeColors.border,
-              color: themeColors.text,
-            }}
-          >
-            <option value="all">All Status</option>
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s.charAt(0).toUpperCase() + s.slice(1)}
-              </option>
-            ))}
-          </select>
-
-          <div className="relative">
-            <span className="absolute left-3 top-2.5 text-xs opacity-70">
-              <FaSearch style={{ color: themeColors.text }} />
-            </span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by order, user, phone, offer..."
-              className="pl-8 pr-3 py-2 rounded-lg border text-sm"
-              style={{
-                backgroundColor: themeColors.surface,
-                borderColor: themeColors.border,
-                color: themeColors.text,
-              }}
-            />
+    <div className="min-h-screen p-6" style={{ backgroundColor: themeColors.background, fontFamily: currentFont.family }}>
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Order Ecosystem</h1>
+            <p className="text-sm font-medium text-slate-500">Live synchronization with inventory and shipping logistics.</p>
           </div>
-
-          <button
-            onClick={fetchOrders}
-            className="px-3 py-2 rounded-lg border text-sm flex items-center gap-2"
-            style={{
-              backgroundColor: themeColors.surface,
-              borderColor: themeColors.border,
-              color: themeColors.text,
-            }}
-            title="Refresh"
-          >
-            <FaSyncAlt className={loading ? "animate-spin" : ""} />
-            Refresh
-          </button>
+          <div className="flex gap-3">
+            <button onClick={fetchOrders} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold text-xs uppercase transition-all hover:bg-slate-50">
+              <FaSyncAlt className={refreshing ? "animate-spin" : ""} /> {refreshing ? "Syncing..." : "Refresh"}
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Messages */}
-      {(error || success) && (
-        <div className="space-y-2">
-          {error && (
-            <div
-              className="p-3 rounded-lg text-sm border"
-              style={{
-                backgroundColor: themeColors.danger + "15",
-                borderColor: themeColors.danger + "50",
-                color: themeColors.danger,
-              }}
-            >
-              {error}
+        {/* Stats Summary */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Total Volume</div>
+                <div className="text-xl font-black text-slate-800">{orders.length} <span className="text-xs font-medium text-slate-400">PNL</span></div>
             </div>
-          )}
-          {success && (
-            <div
-              className="p-3 rounded-lg text-sm border"
-              style={{
-                backgroundColor:
-                  (themeColors.success || themeColors.primary) +
-                  "15",
-                borderColor:
-                  (themeColors.success || themeColors.primary) +
-                  "50",
-                color:
-                  themeColors.success || themeColors.primary,
-              }}
-            >
-              {success}
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="text-[10px] font-black uppercase text-emerald-500 tracking-widest mb-1">Delivered</div>
+                <div className="text-xl font-black text-slate-800">{orders.filter(o => o.status === "delivered").length}</div>
             </div>
-          )}
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-1">In Transit</div>
+                <div className="text-xl font-black text-slate-800">{orders.filter(o => o.status === "shipped").length}</div>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="text-[10px] font-black uppercase text-amber-500 tracking-widest mb-1">Processing</div>
+                <div className="text-xl font-black text-slate-800">{orders.filter(o => !["delivered", "cancelled", "shipped"].includes(o.status)).length}</div>
+            </div>
         </div>
-      )}
 
-      {/* Table */}
-      <div
-        className="p-6 rounded-xl border"
-        style={{
-          backgroundColor: themeColors.surface,
-          borderColor: themeColors.border,
-        }}
-      >
-        <h2
-          className="text-lg font-semibold mb-4 flex items-center justify-between"
-          style={{ color: themeColors.text }}
-        >
-          <span className="flex items-center gap-2">
-            <FaShoppingCart />
-            Order List
-          </span>
-          <span className="text-xs opacity-70">
-            {filteredOrders.length} of {orders.length} shown
-          </span>
-        </h2>
+        {/* Filters */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 mb-6 flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 px-3 border-r border-slate-100 pr-5 text-slate-400">
+                <FaSearch className="text-xs" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Search:</span>
+            </div>
+            <input 
+                type="text" 
+                placeholder="ID, Customer, Phone..."
+                className="flex-1 min-w-[250px] bg-transparent text-sm font-bold focus:outline-none placeholder:text-slate-300"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <div className="h-8 w-[1px] bg-slate-100 mx-2" />
+            <div className="flex items-center gap-3">
+                <FaFilter className="text-slate-300 text-xs" />
+                <select 
+                    value={statusFilter} 
+                    onChange={e => setStatusFilter(e.target.value)}
+                    className="bg-transparent text-[10px] font-black uppercase tracking-widest focus:outline-none cursor-pointer"
+                >
+                    <option value="all">Everywhere</option>
+                    {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+            </div>
+        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr
-                style={{
-                  backgroundColor: themeColors.background + "30",
-                }}
-              >
-                {[
-                  "Order ID",
-                  "Customer",
-                  "Items",
-                  "Amount",
-                  "Offer",
-                  "Status",
-                  "Payment",
-                  "Prescription",
-                  "Created",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: themeColors.text }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody
-              className="divide-y"
-              style={{ borderColor: themeColors.border }}
-            >
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-4 py-6 text-center text-sm"
-                    style={{ color: themeColors.text }}
-                  >
-                    Loading orders...
-                  </td>
-                </tr>
-              ) : filteredOrders.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-4 py-6 text-center text-sm"
-                    style={{ color: themeColors.text }}
-                  >
-                    No orders found.
-                  </td>
-                </tr>
-              ) : (
-                filteredOrders.map((o) => {
-                  const id = o._id || o.id || "-";
-                  const shipping = o.shippingAddress || {};
-                  const itemsText = (o.items || [])
-                    .map(
-                      (it) =>
-                        `${it.productName || it.product?.name || "Item"} x${
-                          it.quantity || 1
-                        } (${it.size || "-"}, ${it.color || "-"})`
-                    )
-                    .join(", ");
-
-                  return (
-                    <tr key={id}>
-                      {/* Order ID */}
-                      <td
-                        className="px-4 py-2 font-mono text-xs"
-                        style={{ color: themeColors.text }}
-                      >
-                        {id}
-                      </td>
-
-                      {/* Customer */}
-                      <td
-                        className="px-4 py-2 text-xs"
-                        style={{ color: themeColors.text }}
-                      >
-                        <div className="font-medium text-sm">
-                          {shipping.name || "-"}
-                        </div>
-                        <div className="opacity-70">
-                          {shipping.phone || "-"}
-                        </div>
-                        <div className="opacity-60">
-                          {shipping.city}, {shipping.state}
-                        </div>
-                        <div className="opacity-60">
-                          User ID: {o.userId || "-"}
-                        </div>
-                      </td>
-
-                      {/* Items */}
-                      <td
-                        className="px-4 py-2 text-xs"
-                        style={{ color: themeColors.text }}
-                      >
-                        <div className="line-clamp-3">{itemsText}</div>
-                        {o.notes && (
-                          <div
-                            className="mt-1 text-[11px] italic opacity-70"
-                            style={{ color: themeColors.text }}
-                          >
-                            Note: {o.notes}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Amounts */}
-                      <td
-                        className="px-4 py-2 text-xs"
-                        style={{ color: themeColors.text }}
-                      >
-                        <div>
-                          Subtotal: {fmtCurrency(o.subtotal)}
-                        </div>
-                        <div>
-                          Discount:{" "}
-                          {o.discount
-                            ? `- ${fmtCurrency(o.discount)}`
-                            : fmtCurrency(0)}
-                        </div>
-                        <div className="font-semibold">
-                          Total: {fmtCurrency(o.total)}
-                        </div>
-                      </td>
-
-                      {/* Offer */}
-                      <td
-                        className="px-4 py-2 text-xs"
-                        style={{ color: themeColors.text }}
-                      >
-                        {o.offerCode || "-"}
-                      </td>
-
-                      {/* Status + change control */}
-                      <td className="px-4 py-2 text-xs">
-                        <div style={statusBadgeStyle(o.status || "pending")}>
-                          {o.status || "pending"}
-                        </div>
-                        <div className="mt-2">
-                          <select
-                            value={o.status || "pending"}
-                            disabled={!isLoggedIn || saving}
-                            onChange={(e) =>
-                              handleStatusChange(o, e.target.value)
-                            }
-                            className="mt-1 px-2 py-1 rounded-lg border text-xs"
-                            style={{
-                              backgroundColor: themeColors.surface,
-                              borderColor: themeColors.border,
-                              color: themeColors.text,
-                            }}
-                          >
-                            {STATUS_OPTIONS.map((s) => (
-                              <option key={s} value={s}>
-                                {s.charAt(0).toUpperCase() + s.slice(1)}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </td>
-
-                      {/* Payment */}
-                      <td
-                        className="px-4 py-2 text-xs"
-                        style={{ color: themeColors.text }}
-                      >
-                        <div className="mb-1">
-                          Method: {o.paymentMethod || "-"}
-                        </div>
-                        <div>
-                          <span
-                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold"
-                            style={{
-                              backgroundColor:
-                                o.paymentStatus === "paid"
-                                  ? (themeColors.success ||
-                                      themeColors.primary) + "20"
-                                  : themeColors.background + "80",
-                              color:
-                                o.paymentStatus === "paid"
-                                  ? themeColors.success ||
-                                    themeColors.primary
-                                  : themeColors.text,
-                            }}
-                          >
-                            {o.paymentStatus || "pending"}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Prescription */}
-                      <td className="px-4 py-2 text-xs">
-                        {o.prescriptionImage && o.prescriptionImage.url ? (
-                          <a
-                            href={o.prescriptionImage.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 underline hover:text-blue-700 font-semibold"
-                          >
-                            View Rx
-                          </a>
+        {/* Table Content */}
+        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left">
+                    <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Order Info</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Client & Logistics</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Lifecycle</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Accounting</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {loading && !refreshing ? (
+                            <tr><td colSpan="5" className="py-20 text-center"><div className="animate-spin h-6 w-6 border-b-2 border-slate-800 mx-auto"></div></td></tr>
+                        ) : filteredOrders.length === 0 ? (
+                            <tr><td colSpan="5" className="py-20 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">No active shipments found</td></tr>
                         ) : (
-                          <span className="opacity-50 text-gray-400">-</span>
+                            filteredOrders.map(o => {
+                                const config = getStatusConfig(o.status);
+                                return (
+                                    <tr key={o._id} className="hover:bg-slate-50/50 transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${config.bg} ${config.text} border ${config.border} shadow-sm`}>
+                                                    <FaShoppingCart size={14} />
+                                                </div>
+                                                <div>
+                                                    <div className="text-xs font-black text-slate-800 uppercase tracking-tighter">#{o.orderNumber || o._id.slice(-6).toUpperCase()}</div>
+                                                    <div className="text-[9px] font-bold text-blue-500 uppercase mt-0.5">{o.shopId?.shopName ? `Vendor: ${o.shopId.shopName}` : "Unallocated"}</div>
+                                                    <div className="text-[9px] font-medium text-slate-400 uppercase mt-0.5">{fmtDateTime(o.createdAt)}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="text-[11px] font-black text-slate-800 uppercase tracking-tight">{o.shippingAddress?.name}</div>
+                                                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    <FaMapMarkerAlt className="text-slate-300" /> {o.shippingAddress?.city}, {o.shippingAddress?.pincode}
+                                                </div>
+                                                <div className="text-[9px] font-medium text-slate-400">{o.shippingAddress?.phone}</div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="inline-flex flex-col items-center">
+                                                <select 
+                                                    value={o.status} 
+                                                    onChange={e => handleUpdate(o._id, { status: e.target.value })}
+                                                    className={`px-3 py-1.5 rounded-lg border ${config.bg} ${config.text} ${config.border} text-[9px] font-black uppercase tracking-widest focus:outline-none cursor-pointer hover:shadow-md transition-all`}
+                                                >
+                                                    {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                                </select>
+                                                <div className={`mt-1 flex items-center gap-1 text-[8px] font-bold ${o.paymentStatus === 'paid' ? 'text-emerald-500' : 'text-slate-400'}`}>
+                                                    <FaInfoCircle size={8} /> {o.paymentMethod} • {o.paymentStatus?.toUpperCase()}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="text-xs font-black text-slate-800 tracking-tighter">{fmtCurrency(o.total)}</div>
+                                            <div className="text-[9px] font-bold text-slate-300 uppercase tracking-wider line-clamp-1">{o.items?.length} Items Captured</div>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         )}
-                      </td>
-
-                      {/* Created */}
-                      <td
-                        className="px-4 py-2 text-xs"
-                        style={{ color: themeColors.text }}
-                      >
-                        {fmtDateTime(o.createdAt)}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
       </div>
     </div>

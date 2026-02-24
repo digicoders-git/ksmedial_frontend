@@ -15,6 +15,8 @@ import {
   FaCoins,
   FaTasks,
   FaWallet,
+  FaWarehouse,
+  FaCheckCircle,
 } from "react-icons/fa";
 import {
   LineChart,
@@ -29,6 +31,7 @@ import {
 } from "recharts";
 import { API_ENDPOINTS } from "../config/api";
 import { getDashboardOverview } from "../apis/dashboard";
+import { getReferalDashboard } from "../apis/referal";
 import { Link } from "react-router-dom";
 
 // ---------- helpers ----------
@@ -69,36 +72,25 @@ export default function Dashboard() {
   const [referalLoading, setReferalLoading] = useState(true);
 
   // Fetch Referal Data
-  /* eslint-disable react-hooks/exhaustive-deps */
   const fetchReferalData = async () => {
     try {
       setReferalLoading(true);
-      // Get userId from auth context (admin is from top level scope)
-      const userId = admin?.id;
+      const adminData = JSON.parse(localStorage.getItem("admin") || "{}");
+      const userId = adminData.id || "global-admin";
       
-      if (!userId) {
-        // console.warn("No user logged in, skipping Referal data fetch");
-        setReferalLoading(false);
-        return;
-      }
-      
-      const response = await fetch(API_ENDPOINTS.REFERAL.DASHBOARD(userId));
-      const data = await response.json();
-      
-      if (response.ok) {
-        setReferalStats({
-          totalReferrals: data.totalReferrals || 0,
-          activeReferrals: data.activeReferrals || 0,
-          totalEarnings: data.totalEarnings || 0,
-          availableBalance: data.availableBalance || 0,
-          pendingTasks: 0, // TODO: Add tasks API
-          completedTasks: 0, // TODO: Add tasks API
-          thisMonthEarnings: data.monthlyEarnings || 0,
-          pendingWithdrawals: data.pendingWithdrawal || 0
-        });
-      }
+      const data = await getReferalDashboard(userId);
+      setReferalStats({
+        totalReferrals: data.totalReferrals || 0,
+        activeReferrals: data.activeReferrals || 0,
+        totalEarnings: data.totalEarnings || 0,
+        availableBalance: data.availableBalance || 0,
+        pendingTasks: data.pendingTasks || 0,
+        completedTasks: data.completedTasks || 0,
+        thisMonthEarnings: data.monthlyEarnings || 0,
+        pendingWithdrawals: 0
+      });
     } catch (error) {
-      console.error("Fetch Referal data error:", error);
+      console.error("Error fetching dashboard referal stats:", error);
     } finally {
       setReferalLoading(false);
     }
@@ -129,9 +121,9 @@ export default function Dashboard() {
     fetchReferalData(); // Fetch Referal data on mount
   }, []);
 
-  const summary = overview?.summaryCards || {};
-  const charts = overview?.charts || {};
-  const tables = overview?.tables || {};
+  const summary = overview?.summaryCards || overview?.summary || overview || {};
+  const charts = overview?.charts || overview || {};
+  const tables = overview?.tables || overview || {};
   const meta = overview?.meta || {};
 
   const salesLast7Days = useMemo(() => charts.salesLast7Days || [], [charts.salesLast7Days]);
@@ -139,6 +131,7 @@ export default function Dashboard() {
 
   const latestOrders = tables.latestOrders || [];
   const latestProducts = tables.latestProducts || [];
+  const completedPutAways = tables.completedPutAways || [];
   const recentEnquiries = tables.recentEnquiries || [];
   const activeOffers = tables.activeOffers || [];
 
@@ -175,9 +168,19 @@ export default function Dashboard() {
       title: "Total Revenue",
       value: fmtCurrency(summary.totalRevenue),
       icon: FaRupeeSign,
-      description: `This month: ${fmtCurrency(
-        summary.monthRevenue
-      )} • Avg order: ${fmtCurrency(summary.avgOrderValue)}`,
+      description: `Target: ${fmtCurrency(summary.monthRevenue)}`,
+    },
+    {
+      title: "Online Income",
+      value: fmtCurrency(summary.onlineRevenue || summary.onlineIncome || 0),
+      icon: FaShoppingCart,
+      description: "From Website Orders",
+    },
+    {
+      title: "Offline Income",
+      value: fmtCurrency(summary.offlineRevenue || summary.offlineIncome || 0),
+      icon: FaBoxOpen,
+      description: "From Inventory Panel",
     },
     {
       title: "Orders",
@@ -186,22 +189,10 @@ export default function Dashboard() {
       description: `Today: ${fmtNum(summary.todayOrders)}`,
     },
     {
-      title: "Catalog",
-      value: fmtNum(summary.totalProducts),
-      icon: FaBoxOpen,
-      description: `Active products: ${fmtNum(
-        summary.activeProducts
-      )} • Categories: ${fmtNum(summary.totalCategories)} (${fmtNum(
-        summary.activeCategories
-      )} active)`,
-    },
-    {
-      title: "Engagement",
-      value: fmtNum(summary.totalEnquiries),
-      icon: FaUsers,
-      description: `Unread enquiries: ${fmtNum(
-        summary.unreadEnquiries
-      )} • Active offers: ${fmtNum(summary.activeOffers)}`,
+      title: "Completed Put-Aways",
+      value: fmtNum(summary.putAwayCount || 0),
+      icon: FaWarehouse,
+      description: `Today: ${fmtNum(summary.todayPutAwayCount || 0)} (${fmtCurrency(summary.totalPutAwayValue || 0)})`,
     },
   ];
 
@@ -1028,6 +1019,77 @@ export default function Dashboard() {
                           style={{ color: themeColors.text }}
                         >
                           No active offers.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {/* Put-Away Completed Table */}
+            <div
+              className="mt-6 p-6 rounded-xl border"
+              style={{
+                backgroundColor: themeColors.surface,
+                borderColor: themeColors.border,
+              }}
+            >
+              <h2
+                className="text-lg font-semibold mb-4 flex items-center gap-2"
+                style={{ color: themeColors.text }}
+              >
+                <FaWarehouse />
+                Recently Completed Put-Aways (Inventory)
+              </h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr
+                      style={{
+                        backgroundColor: themeColors.background + "30",
+                      }}
+                    >
+                      {["Invoice #", "Shop", "Supplier", "Items", "Value", "Completed On"].map((h) => (
+                        <th
+                          key={h}
+                          className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide"
+                          style={{ color: themeColors.text }}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: themeColors.border }}>
+                    {completedPutAways.map((p) => (
+                      <tr key={p._id}>
+                        <td className="px-4 py-2 text-xs font-mono" style={{ color: themeColors.text }}>
+                          {p.invoiceNumber}
+                        </td>
+                        <td className="px-4 py-2" style={{ color: themeColors.text }}>
+                          {p.shopId?.shopName || "Global"}
+                        </td>
+                        <td className="px-4 py-2" style={{ color: themeColors.text }}>
+                          {p.supplierId?.name || "Unknown"}
+                        </td>
+                        <td className="px-4 py-2" style={{ color: themeColors.text }}>
+                          {p.items?.length || 0} SKU
+                        </td>
+                        <td className="px-4 py-2 font-semibold" style={{ color: themeColors.primary }}>
+                          {fmtCurrency(p.grandTotal)}
+                        </td>
+                        <td className="px-4 py-2" style={{ color: themeColors.text }}>
+                          <span className="flex items-center gap-1 text-emerald-500">
+                             <FaCheckCircle className="text-[10px]" />
+                             {fmtDate(p.updatedAt)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {completedPutAways.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-4 text-center text-sm" style={{ color: themeColors.text }}>
+                          No recent put-away records.
                         </td>
                       </tr>
                     )}

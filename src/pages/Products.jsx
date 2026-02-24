@@ -1,2504 +1,580 @@
-// src/pages/Products.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "../context/ThemeContext";
-import { useFont } from "../context/FontContext";
-import { useAuth } from "../context/AuthContext";
-import { getCategories } from "../apis/categories";
-import {
-  listProducts,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  bulkUploadProduct,
-} from "../apis/products";
-import {
-  FaBoxOpen,
-  FaPlus,
-  FaEdit,
-  FaTrash,
-  FaSyncAlt,
-  FaSearch,
+import { 
+  FaBoxOpen, 
+  FaPlus, 
+  FaEdit, 
+  FaTrash, 
+  FaSyncAlt, 
+  FaSearch, 
+  FaEye, // Added
   FaImage,
+  FaTimes, // Added
+  FaFilter,
+  FaCubes,
   FaTable,
-  FaThLarge,
-  FaToggleOn,
-  FaToggleOff,
-  FaEye,
+  FaThLarge
 } from "react-icons/fa";
+import { 
+  listProducts, 
+  createProduct, 
+  updateProduct, 
+  deleteProduct 
+} from "../apis/products";
+import { getCategories } from "../apis/categories";
+import { listOffers } from "../apis/offers"; // Added
+import { toast } from "sonner";
 import Swal from "sweetalert2";
-import "sweetalert2/dist/sweetalert2.min.css";
-
-// ---------- helpers ----------
-const fmtCurrency = (n) =>
-  typeof n === "number"
-    ? `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
-    : n ?? "-";
-
-const fmtDate = (iso) =>
-  iso ? new Date(iso).toLocaleDateString("en-IN") : "-";
-
-const emptyForm = {
-  name: "",
-  mrp: "",
-  purchasePrice: "",
-  sellingPrice: "", // mapped to price
-  margin: "",
-  stock: "",
-  unit: "Pcs",
-  manufacturer: "",
-  batchNo: "",
-  expiryDate: "",
-  prescriptionRequired: false,
-  gst: 0,
-  
-  price: "", // alias for sellingPrice
-  discountPercent: "",
-  categoryId: "",
-  description: "",
-  about: "",
-  isActive: true,
-};
 
 export default function Products() {
   const { themeColors } = useTheme();
-  const { currentFont } = useFont();
-  const { isLoggedIn } = useAuth();
-
-  const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
-
+  const [categories, setCategories] = useState([]);
+  const [offers, setOffers] = useState([]); // Added
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [viewProduct, setViewProduct] = useState(null); // Added for full view
+  const [viewMode, setViewMode] = useState("table");
 
-  const [form, setForm] = useState(emptyForm);
-  const [editing, setEditing] = useState(null); // product being edited
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    about: "",
+    categoryId: "",
+    mrp: 0,
+    sellingPrice: 0,
+    purchasePrice: 0,
+    discountPercent: 0,
+    stock: 0,
+    unit: "Pcs",
+    brand: "",
+    manufacturer: "",
+    offerId: "", // Added
+    status: "Active"
+  });
 
-  const [mainImageFile, setMainImageFile] = useState(null);
-  const [galleryImageFiles, setGalleryImageFiles] = useState([]);
-  const [csvFile, setCsvFile] = useState(null); // CSV upload state
+  const [mainImage, setMainImage] = useState(null);
+  const [galleryImages, setGalleryImages] = useState([]);
 
-  // NEW: dynamic lists
-  const [sizesList, setSizesList] = useState([""]);
-  const [colorsList, setColorsList] = useState([""]);
-  const [addOns, setAddOns] = useState([
-    { name: "", price: "", isDefault: true },
-  ]);
+  const fetchProducts = async () => {
+    try {
+      setRefreshing(true);
+      const res = await listProducts();
+      const list = Array.isArray(res) ? res : res.products || [];
+      setProducts(list);
+    } catch {
+      toast.error("Failed to load products");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
-  const [search, setSearch] = useState("");
-  const [viewMode, setViewMode] = useState("table"); // "table" | "card"
-
-  // NEW: full view modal product
-  const [viewProduct, setViewProduct] = useState(null);
-
-  // ---------- fetchers ----------
   const fetchCategories = async () => {
     try {
       const res = await getCategories();
       const list = Array.isArray(res) ? res : res.categories || [];
       setCategories(list);
-    } catch (e) {
-      console.error("Failed to load categories", e);
+    } catch (error) {
+      console.error("Cat fetch error", error);
     }
   };
 
-  const fetchProducts = async () => {
+  const fetchOffers = async () => {
     try {
-      setLoading(true);
-      setError("");
-      const list = await listProducts();
-      setProducts(list);
-    } catch (e) {
-      setError(
-        e?.response?.data?.message ||
-          e?.message ||
-          "Failed to load products."
-      );
-    } finally {
-      setLoading(false);
+      const res = await listOffers();
+      const list = Array.isArray(res) ? res : res.offers || [];
+      setOffers(list);
+    } catch (error) {
+      console.error("Offers fetch error", error);
     }
   };
 
   useEffect(() => {
-    fetchCategories();
     fetchProducts();
+    fetchCategories();
+    fetchOffers();
   }, []);
 
-  // categoryId -> name map
-  const categoryMap = useMemo(() => {
-    const map = {};
-    categories.forEach((c) => {
-      const id = c._id || c.id;
-      if (id) map[id] = c.name;
-    });
-    return map;
-  }, [categories]);
-
-  const resetForm = () => {
-    setForm(emptyForm);
-    setEditing(null);
-    setMainImageFile(null);
-    setGalleryImageFiles([]);
-    setCsvFile(null);
-    setSizesList([""]);
-    setColorsList([""]);
-    setAddOns([{ name: "", price: "", isDefault: true }]);
-  };
-
-  const openAddModal = () => {
-    resetForm();
-    setError("");
-    setSuccess("");
-    setIsModalOpen(true);
-  };
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-    setError("");
-    setSuccess("");
-  };
-
-  const handleMainImageChange = (e) => {
-    const file = e.target.files?.[0];
-    setMainImageFile(file || null);
-  };
-
-  const handleGalleryImagesChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    setGalleryImageFiles(files);
-  };
-
-  // ---------- Sizes dynamic handlers ----------
-  const handleSizeChange = (index, value) => {
-    setSizesList((prev) =>
-      prev.map((s, i) => (i === index ? value : s))
-    );
-  };
-
-  const handleSizeAddRow = () => {
-    setSizesList((prev) => [...prev, ""]);
-  };
-
-  const handleSizeRemoveRow = (index) => {
-    setSizesList((prev) => {
-      if (prev.length === 1) return [""];
-      return prev.filter((_, i) => i !== index);
-    });
-  };
-
-  // ---------- Colors dynamic handlers ----------
-  const handleColorChange = (index, value) => {
-    setColorsList((prev) =>
-      prev.map((c, i) => (i === index ? value : c))
-    );
-  };
-
-  const handleColorAddRow = () => {
-    setColorsList((prev) => [...prev, ""]);
-  };
-
-  const handleColorRemoveRow = (index) => {
-    setColorsList((prev) => {
-      if (prev.length === 1) return [""];
-      return prev.filter((_, i) => i !== index);
-    });
-  };
-
-  // ---------- Add-ons handlers ----------
-  const handleAddOnChange = (index, field, value) => {
-    setAddOns((prev) =>
-      prev.map((item, i) => {
-        if (i !== index) {
-          if (field === "isDefault" && value) {
-            return { ...item, isDefault: false };
-          }
-          return item;
+  // Auto Calculate Selling Price based on Offer
+  useEffect(() => {
+    if (formData.offerId && formData.mrp > 0) {
+      const selectedOffer = offers.find(o => (o._id || o.id) === formData.offerId);
+      if (selectedOffer) {
+        let calculatedPrice = formData.mrp;
+        if (selectedOffer.discountType === "percentage") {
+          calculatedPrice = formData.mrp - (formData.mrp * selectedOffer.discountValue / 100);
+        } else if (selectedOffer.discountType === "flat") {
+          calculatedPrice = formData.mrp - selectedOffer.discountValue;
         }
-        if (field === "isDefault") {
-          return { ...item, isDefault: value };
-        }
-        return { ...item, [field]: value };
-      })
-    );
-  };
-
-  const handleAddOnAddRow = () => {
-    setAddOns((prev) => [
-      ...prev,
-      { name: "", price: "", isDefault: prev.length === 0 },
-    ]);
-  };
-
-  const handleAddOnRemoveRow = (index) => {
-    setAddOns((prev) => {
-      if (prev.length === 1) {
-        return [{ name: "", price: "", isDefault: true }];
+        setFormData(prev => ({ 
+          ...prev, 
+          sellingPrice: Math.max(0, calculatedPrice), 
+          discountPercent: selectedOffer.discountType === "percentage" ? selectedOffer.discountValue : 0 
+        }));
       }
-      const filtered = prev.filter((_, i) => i !== index);
-      if (!filtered.some((a) => a.isDefault) && filtered.length > 0) {
-        filtered[0].isDefault = true;
-      }
-      return [...filtered];
-    });
-  };
+    }
+  }, [formData.offerId, formData.mrp, offers]);
 
-  const handleEdit = (prod) => {
-    setEditing(prod);
-    setForm({
-      name: prod.name || "",
-      mrp: prod.mrp || "",
-      purchasePrice: prod.purchasePrice || "",
-      sellingPrice: prod.sellingPrice || prod.price || "",
-      price: prod.sellingPrice || prod.price || "",
-      margin: prod.margin || "",
-      stock: prod.stock || "",
-      unit: prod.unit || "Pcs",
-      manufacturer: prod.manufacturer || "",
-      batchNo: prod.batchNo || "",
-      expiryDate: prod.expiryDate ? new Date(prod.expiryDate).toISOString().split('T')[0] : "",
-      prescriptionRequired: !!prod.prescriptionRequired,
-      gst: prod.gst || 0,
-      
-      discountPercent:
-        typeof prod.discountPercent === "number"
-          ? String(prod.discountPercent)
-          : prod.discountPercent || "",
-      categoryId:
-        prod.categoryId?._id ||
-        prod.categoryId?.id ||
-        prod.categoryId ||
-        prod.category?._id ||
-        "",
-      description: prod.description || "",
-      about: prod.about || "",
-      isActive:
-        typeof prod.isActive === "boolean"
-          ? prod.isActive
-          : true,
-    });
-
-    if (Array.isArray(prod.sizes) && prod.sizes.length) {
-      setSizesList(prod.sizes);
+  const handleOpenModal = (product = null) => {
+    if (product) {
+      setEditingProduct(product);
+      setFormData({
+        name: product.name || "",
+        description: product.description || "",
+        about: product.about || "",
+        categoryId: product.categoryId?._id || product.categoryId || "",
+        mrp: product.mrp || 0,
+        sellingPrice: product.sellingPrice || 0,
+        purchasePrice: product.purchasePrice || 0,
+        discountPercent: product.discountPercent || 0,
+        stock: product.stock || 0,
+        unit: product.unit || "Pcs",
+        brand: product.brand || "",
+        manufacturer: product.manufacturer || "",
+        offerId: product.offerId?._id || product.offerId || "",
+        status: product.status || "Active"
+      });
     } else {
-      setSizesList([""]);
-    }
-
-    if (Array.isArray(prod.colors) && prod.colors.length) {
-      setColorsList(prod.colors);
-    } else {
-      setColorsList([""]);
-    }
-
-    if (Array.isArray(prod.addOns) && prod.addOns.length) {
-      setAddOns(
-        prod.addOns.map((a) => ({
-          name: a.name || "",
-          price:
-            typeof a.price === "number"
-              ? String(a.price)
-              : a.price || "",
-          isDefault: !!a.isDefault,
-        }))
-      );
-    } else {
-      setAddOns([{ name: "", price: "", isDefault: true }]);
-    }
-
-    setMainImageFile(null);
-    setGalleryImageFiles([]);
-    setError("");
-    setSuccess("");
-    setIsModalOpen(true);
-  };
-
-  const buildFormData = () => {
-    const fd = new FormData();
-    fd.append("name", form.name.trim());
-    fd.append("price", form.sellingPrice || form.price); // Use selling price logic
-    fd.append("sellingPrice", form.sellingPrice || form.price);
-
-    fd.append("mrp", form.mrp);
-    fd.append("purchasePrice", form.purchasePrice);
-    fd.append("margin", form.margin);
-    fd.append("stock", form.stock);
-    fd.append("unit", form.unit);
-    fd.append("manufacturer", form.manufacturer);
-    fd.append("batchNo", form.batchNo);
-    fd.append("expiryDate", form.expiryDate);
-    fd.append("prescriptionRequired", String(form.prescriptionRequired));
-    fd.append("gst", form.gst);
-
-    if (form.discountPercent?.trim() !== "") {
-      fd.append("discountPercent", form.discountPercent.trim());
-    }
-
-    if (form.categoryId) {
-      fd.append("categoryId", form.categoryId);
-    }
-
-    const cleanSizes = sizesList
-      .map((s) => s.trim())
-      .filter((s) => s.length);
-    if (cleanSizes.length) {
-      fd.append("sizes", JSON.stringify(cleanSizes));
-    }
-
-    const cleanColors = colorsList
-      .map((c) => c.trim())
-      .filter((c) => c.length);
-    if (cleanColors.length) {
-      fd.append("colors", JSON.stringify(cleanColors));
-    }
-
-    const cleanedAddOns = addOns
-      .filter((a) => a.name.trim())
-      .map((a) => ({
-        name: a.name.trim(),
-        price: Number(a.price) || 0,
-        isDefault: !!a.isDefault,
-      }));
-    if (cleanedAddOns.length) {
-      fd.append("addOns", JSON.stringify(cleanedAddOns));
-    }
-
-    if (form.description.trim()) {
-      fd.append("description", form.description.trim());
-    }
-
-    if (form.about.trim()) {
-      fd.append("about", form.about.trim());
-    }
-
-    fd.append("isActive", String(form.isActive));
-
-    if (mainImageFile) {
-      fd.append("mainImage", mainImageFile);
-    }
-
-    if (galleryImageFiles?.length) {
-      galleryImageFiles.forEach((file) =>
-        fd.append("galleryImages", file)
-      );
-    }
-
-    return fd;
-  };
-
-  const handleDelete = async (prod) => {
-    if (!isLoggedIn) {
-      setError("You must be logged in as admin to delete products.");
-      return;
-    }
-
-    const idOrSlug = prod.slug || prod._id || prod.id;
-    if (!idOrSlug) {
-      setError("Cannot delete this product (missing identifier).");
-      return;
-    }
-
-    const result = await Swal.fire({
-      title: `Delete product "${prod.name}"?`,
-      text: "This action cannot be undone.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#e02424",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Yes, delete it",
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      setSaving(true);
-      setError("");
-      setSuccess("");
-      await deleteProduct(idOrSlug);
-      setSuccess("Product deleted successfully.");
-      await fetchProducts();
-      Swal.fire({
-        icon: "success",
-        title: "Deleted",
-        text: "Product deleted successfully.",
-        timer: 1500,
-        showConfirmButton: false,
+      setEditingProduct(null);
+      setFormData({
+        name: "",
+        description: "",
+        about: "",
+        categoryId: "",
+        mrp: 0,
+        sellingPrice: 0,
+        purchasePrice: 0,
+        discountPercent: 0,
+        stock: 0,
+        unit: "Pcs",
+        brand: "",
+        manufacturer: "",
+        offerId: "",
+        status: "Active"
       });
-    } catch (e) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        "Failed to delete product.";
-      setError(msg);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: msg,
-      });
-    } finally {
-      setSaving(false);
     }
-  };
-
-  // NEW: Active/Inactive toggle handler
-  const handleToggleStatus = async (prod) => {
-    if (!isLoggedIn) {
-      setError("You must be logged in as admin to change status.");
-      return;
-    }
-
-    const idOrSlug = prod.slug || prod._id || prod.id;
-    if (!idOrSlug) {
-      setError("Cannot update this product (missing identifier).");
-      return;
-    }
-
-    const newStatus = !prod.isActive;
-
-    try {
-      setSaving(true);
-      setError("");
-      setSuccess("");
-
-      await updateProduct(idOrSlug, { isActive: newStatus });
-
-      // Local state update so row/card list se gayab na ho
-      setProducts((prev) =>
-        prev.map((p) =>
-          (p._id || p.id || p.slug) === (prod._id || prod.id || prod.slug)
-            ? { ...p, isActive: newStatus }
-            : p
-        )
-      );
-
-      setSuccess(
-        `Product ${newStatus ? "activated" : "deactivated"} successfully.`
-      );
-
-      Swal.fire({
-        icon: "success",
-        title: newStatus ? "Activated" : "Deactivated",
-        text: `Product ${newStatus ? "activated" : "deactivated"} successfully.`,
-        timer: 1500,
-        showConfirmButton: false,
-      });
-    } catch (e) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        "Failed to update product status.";
-      setError(msg);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: msg,
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // NEW: View full product handler
-  const handleView = (prod) => {
-    setViewProduct(prod);
+    setMainImage(null);
+    setGalleryImages([]);
+    setShowModal(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!isLoggedIn) {
-      setError("You must be logged in as admin to manage products.");
-      return;
-    }
-
-    // CSV BULK UPLOAD HANDLING
-    if (!editing && csvFile) {
-        try {
-            setSaving(true);
-            const fd = new FormData();
-            fd.append("csvFile", csvFile);
-            
-            const res = await bulkUploadProduct(fd);
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Import Result',
-                text: res.message,
-                footer: res.errors && res.errors.length > 0 ? 'Check console for error details' : ''
-            });
-            if(res.errors && res.errors.length > 0) {
-                 console.warn("Bulk upload errors:", res.errors);
-            }
-
-            resetForm();
-            setCsvFile(null);
-            setIsModalOpen(false);
-            await fetchProducts();
-        } catch(err) {
-             console.error(err);
-             const msg = err?.response?.data?.message || err.message || "Failed to upload CSV";
-             setError(msg);
-             Swal.fire({ icon: 'error', title: 'Upload Failed', text: msg });
-        } finally {
-             setSaving(false);
-        }
-        return;
-    }
-
-    if (!form.name.trim()) {
-      setError("Product name is required.");
-      return;
-    }
-    if (!form.sellingPrice && !form.price) {
-      setError("Selling Price is required.");
-      return;
-    }
+    const fd = new FormData();
+    Object.keys(formData).forEach(key => fd.append(key, formData[key]));
+    if (mainImage) fd.append("mainImage", mainImage);
+    galleryImages.forEach(img => fd.append("galleryImages", img));
 
     try {
-      setSaving(true);
-      setError("");
-      setSuccess("");
-
-      const fd = buildFormData();
-
-      if (editing) {
-        const idOrSlug = editing.slug || editing._id || editing.id;
-        if (!idOrSlug) {
-          throw new Error("Missing product identifier for update.");
-        }
-        await updateProduct(idOrSlug, fd);
-        setSuccess("Product updated successfully.");
-        Swal.fire({
-          icon: "success",
-          title: "Updated",
-          text: "Product updated successfully.",
-          timer: 1500,
-          showConfirmButton: false,
-        });
+      if (editingProduct) {
+        await updateProduct(editingProduct._id || editingProduct.id, fd);
+        toast.success("Catalog updated");
       } else {
         await createProduct(fd);
-        setSuccess("Product created successfully.");
-        Swal.fire({
-          icon: "success",
-          title: "Created",
-          text: "Product created successfully.",
-          timer: 1500,
-          showConfirmButton: false,
-        });
+        toast.success("Product launched successfully");
       }
-
-      resetForm();
-      setIsModalOpen(false);
-      await fetchProducts();
-    } catch (e) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        "Failed to save product.";
-      setError(msg);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: msg,
-      });
-    } finally {
-      setSaving(false);
+      setShowModal(false);
+      fetchProducts();
+    } catch {
+      toast.error("Operation failed");
     }
+  };
+
+  const handleDelete = async (product) => {
+    Swal.fire({
+      title: "Confirm Deletion?",
+      text: `Remove "${product.name}" from public app listings?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#1e293b",
+      cancelButtonColor: "#ef4444",
+      confirmButtonText: "Yes, Remove"
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await deleteProduct(product._id || product.id);
+          toast.success("Product removed");
+          fetchProducts();
+        } catch {
+          toast.error("Deletion failed");
+        }
+      }
+    });
   };
 
   const filteredProducts = useMemo(() => {
-    if (!search.trim()) return products;
-    const q = search.toLowerCase();
-    return products.filter((p) => {
-      const name = (p.name || "").toLowerCase();
-      const desc = (p.description || "").toLowerCase();
-      const catName =
-        p.category?.name ||
-        p.categoryId?.name ||
-        categoryMap[p.categoryId] ||
-        "";
-      return (
-        name.includes(q) ||
-        desc.includes(q) ||
-        String(catName).toLowerCase().includes(q)
-      );
-    });
-  }, [products, search, categoryMap]);
+    return products.filter(p => 
+      p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.brand?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [products, searchTerm]);
 
-  const getFinalPrice = (p) => {
-    if (typeof p.finalPrice === "number") return p.finalPrice;
-    if (typeof p.price === "number" && p.discountPercent) {
-      const discount =
-        (p.price * Number(p.discountPercent || 0)) / 100;
-      return p.price - discount;
-    }
-    return p.price;
-  };
-
-  return (
-    <div
-      className="space-y-6"
-      style={{ fontFamily: currentFont.family }}
-    >
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1
-            className="text-2xl font-bold flex items-center gap-2"
-            style={{ color: themeColors.text }}
-          >
-            <FaBoxOpen />
-            Products
-          </h1>
-          
-        </div>
-
-        {/* Right controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <span className="absolute left-3 top-2.5 text-xs opacity-70">
-              <FaSearch style={{ color: themeColors.text }} />
-            </span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search medicines..."
-              className="pl-8 pr-3 py-2 rounded-lg border text-sm"
-              style={{
-                backgroundColor: themeColors.surface,
-                borderColor: themeColors.border,
-                color: themeColors.text,
-              }}
-            />
-          </div>
-
-          <button
-            onClick={fetchProducts}
-            className="px-3 py-2 rounded-lg border text-sm flex items-center gap-2"
-            style={{
-              backgroundColor: themeColors.surface,
-              borderColor: themeColors.border,
-              color: themeColors.text,
-            }}
-            title="Refresh"
-          >
-            <FaSyncAlt className={loading ? "animate-spin" : ""} />
-            Refresh
-          </button>
-
-          {/* View toggle */}
-          <div
-            className="flex items-center rounded-lg overflow-hidden border text-sm"
-            style={{ borderColor: themeColors.border }}
-          >
-            <button
-              type="button"
-              onClick={() => setViewMode("table")}
-              className={`px-3 py-2 flex items-center gap-1 ${
-                viewMode === "table" ? "" : "opacity-70"
-              }`}
-              style={{
-                backgroundColor:
-                  viewMode === "table"
-                    ? themeColors.surface
-                    : "transparent",
-                color: themeColors.text,
-              }}
-            >
-              <FaTable />{" "}
-              <span className="hidden sm:inline">Table</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("card")}
-              className={`px-3 py-2 flex items-center gap-1 border-l`}
-              style={{
-                borderColor: themeColors.border,
-                backgroundColor:
-                  viewMode === "card"
-                    ? themeColors.surface
-                    : "transparent",
-                opacity: viewMode === "card" ? 1 : 0.7,
-                color: themeColors.text,
-              }}
-            >
-              <FaThLarge />{" "}
-              <span className="hidden sm:inline">Cards</span>
-            </button>
-          </div>
-
-          <button
-            onClick={openAddModal}
-            disabled={!isLoggedIn}
-            className="px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              backgroundColor: themeColors.primary,
-              color: themeColors.onPrimary,
-            }}
-            title={
-              isLoggedIn ? "Add new product" : "Login as admin to add"
-            }
-          >
-            <FaPlus />
-            Add Medicine
-          </button>
+  if (loading && !refreshing) {
+    return (
+      <div className="min-h-screen p-6" style={{ backgroundColor: themeColors.background }}>
+        <div className="max-w-7xl mx-auto flex flex-col justify-center items-center py-20 gap-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+          <p className="text-xs font-bold uppercase tracking-widest opacity-50">Fetching App Catalog...</p>
         </div>
       </div>
+    );
+  }
 
-      {/* Status Messages */}
-      {(error || success || !isLoggedIn) && (
-        <div className="space-y-2">
-          {error && (
-            <div
-              className="p-3 rounded-lg text-sm border"
-              style={{
-                backgroundColor: themeColors.danger + "15",
-                borderColor: themeColors.danger + "50",
-                color: themeColors.danger,
-              }}
+  return (
+    <div className="min-h-screen p-6" style={{ backgroundColor: themeColors.background }}>
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">App Product Master</h1>
+            <p className="text-sm font-medium text-slate-500">Manage products displayed on your user application and website.</p>
+          </div>
+          <div className="flex gap-3">
+            <button 
+              onClick={fetchProducts}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold text-xs uppercase transition-all hover:bg-slate-50"
             >
-              {error}
-            </div>
-          )}
-          {success && (
-            <div
-              className="p-3 rounded-lg text-sm border"
-              style={{
-                backgroundColor:
-                  (themeColors.success || themeColors.primary) +
-                  "15",
-                borderColor:
-                  (themeColors.success || themeColors.primary) +
-                  "50",
-                color:
-                  themeColors.success || themeColors.primary,
-              }}
+              <FaSyncAlt className={refreshing ? "animate-spin" : ""} /> {refreshing ? "Updating..." : "Refresh"}
+            </button>
+            <button 
+              onClick={() => handleOpenModal()}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs uppercase transition-all hover:bg-slate-700 shadow-lg"
             >
-              {success}
-            </div>
-          )}
-          {!isLoggedIn && (
-            <div
-              className="p-3 rounded-lg text-sm border"
-              style={{
-                backgroundColor:
-                  (themeColors.warning || themeColors.primary) +
-                  "15",
-                borderColor:
-                  (themeColors.warning || themeColors.primary) +
-                  "50",
-                color:
-                  themeColors.warning || themeColors.primary,
-              }}
-            >
-              You are viewing medicines as public. Login as admin to
-              add, edit, or delete products.
-            </div>
-          )}
+              <FaPlus /> Launch Product
+            </button>
+          </div>
         </div>
-      )}
 
-      {/* Products list: table / card */}
-      <div
-        className="p-6 rounded-xl border"
-        style={{
-          backgroundColor: themeColors.surface,
-          borderColor: themeColors.border,
-        }}
-      >
-        <h2
-          className="text-lg font-semibold mb-4 flex items-center justify-between"
-          style={{ color: themeColors.text }}
-        >
-          <span className="flex items-center gap-2">
-            <FaBoxOpen />
-            {viewMode === "table" ? "Medicine List" : "Medicine Cards"}
-          </span>
-          <span className="text-xs opacity-70">
-            {filteredProducts.length} of {products.length} shown
-          </span>
-        </h2>
+        {/* Filters */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 mb-6 flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 px-3 border-r border-slate-100 pr-5 text-slate-400">
+                <FaSearch className="text-xs" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Global Search:</span>
+            </div>
+            <input 
+                type="text" 
+                placeholder="Search by name, brand or manufacturer..."
+                className="flex-1 min-w-[300px] bg-transparent text-sm font-medium focus:outline-none placeholder:text-slate-300"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100">
+                <button onClick={() => setViewMode("table")} className={`p-2 rounded-lg transition-all ${viewMode === "table" ? "bg-white shadow-sm text-slate-800" : "text-slate-400"}`}>
+                    <FaTable />
+                </button>
+                <button onClick={() => setViewMode("card")} className={`p-2 rounded-lg transition-all ${viewMode === "card" ? "bg-white shadow-sm text-slate-800" : "text-slate-400"}`}>
+                    <FaThLarge />
+                </button>
+            </div>
+        </div>
 
         {viewMode === "table" ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr
-                  style={{
-                    backgroundColor: themeColors.background + "30",
-                  }}
-                >
-                  {["Name", "Category", "Batch", "Expiry", "Stock", "MRP", "Price", "Status", "Actions"].map((h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide"
-                      style={{ color: themeColors.text }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody
-                className="divide-y"
-                style={{ borderColor: themeColors.border }}
-              >
-                {loading ? (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="px-4 py-6 text-center text-sm"
-                      style={{ color: themeColors.text }}
-                    >
-                      Loading products...
-                    </td>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Product Details</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Pricing</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Stock</th>
+                      <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
+                      <th className="px-6 py-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">Actions</th>
                   </tr>
-                ) : filteredProducts.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="px-4 py-6 text-center text-sm"
-                      style={{ color: themeColors.text }}
-                    >
-                      No products found.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredProducts.map((p) => {
-                    const catName =
-                      p.category?.name ||
-                      p.categoryId?.name ||
-                      categoryMap[p.categoryId] ||
-                      "-";
-                    return (
-                      <tr key={p._id || p.id || p.slug}>
-                        <td className="px-4 py-2" style={{ color: themeColors.text }}>
-                          <div className="flex flex-col">
-                            <span className="font-semibold">{p.name}</span>
-                            <span className="text-xs opacity-60">Mfr: {p.manufacturer || "-"}</span>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredProducts.length === 0 ? (
+                      <tr>
+                          <td colSpan="5" className="px-6 py-20 text-center text-slate-300 uppercase text-[10px] font-bold tracking-widest">
+                            No products found in catalog
+                          </td>
+                      </tr>
+                  ) : (
+                    filteredProducts.map((p) => (
+                      <tr key={p._id || p.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                  {p.image ? (
+                                      <img src={`${import.meta.env.VITE_API_BASE_URL.replace("/api", "")}${p.image}`} className="w-full h-full object-cover" alt="" />
+                                  ) : (
+                                      <FaImage className="text-slate-300 text-xs" />
+                                  )}
+                              </div>
+                              <div>
+                                  <div className="text-sm font-bold text-slate-800">{p.name}</div>
+                                  <div className="text-[10px] font-medium text-slate-400 capitalize">{p.brand} • {p.categoryId?.name || p.category || "General"}</div>
+                              </div>
                           </div>
                         </td>
-                        <td className="px-4 py-2 text-xs" style={{ color: themeColors.text }}>
-                          {catName}
-                        </td>
-                        <td className="px-4 py-2 text-xs" style={{ color: themeColors.text }}>
-                          {p.batchNo || "-"}
-                        </td>
-                         <td className="px-4 py-2 text-xs" style={{ color: themeColors.text }}>
-                          {p.expiryDate ? fmtDate(p.expiryDate) : "-"}
-                        </td>
-                         <td className="px-4 py-2 text-xs font-semibold" style={{ color: (p.stock || 0) < 10 ? themeColors.danger : themeColors.text }}>
-                          {p.stock || 0} {p.unit || 'Pcs'}
-                        </td>
-                        <td className="px-4 py-2 text-xs" style={{ color: themeColors.text }}>
-                          {fmtCurrency(p.mrp)}
-                        </td>
-                         <td className="px-4 py-2 text-sm font-bold" style={{ color: themeColors.primary }}>
-                          {fmtCurrency(getFinalPrice(p))}
-                        </td>
-                        <td className="px-4 py-2">
-                          <span
-                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold"
-                            style={{
-                              backgroundColor: p.isActive
-                                ? (themeColors.success ||
-                                    themeColors.primary) + "15"
-                                : themeColors.border,
-                              color: p.isActive
-                                ? themeColors.success ||
-                                  themeColors.primary
-                                : themeColors.text,
-                            }}
-                          >
-                            {p.isActive ? "Active" : "Inactive"}
-                          </span>
-                        </td>
-                        <td
-                          className="px-4 py-2 text-xs"
-                          style={{ color: themeColors.text }}
-                        >
-                          {p.createdAt ? fmtDate(p.createdAt) : "-"}
-                        </td>
-                        <td className="px-4 py-2">
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-bold text-slate-800">₹{p.sellingPrice?.toLocaleString()}</div>
                           <div className="flex items-center gap-2">
-                            {/* Active/Inactive Toggle Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleToggleStatus(p)}
-                              disabled={!isLoggedIn || saving}
-                              className="p-2 rounded-lg border text-xs disabled:opacity-40"
-                              style={{
-                                borderColor: themeColors.border,
-                                color: p.isActive
-                                  ? themeColors.warning || "#f59e0b"
-                                  : themeColors.success ||
-                                    themeColors.primary,
-                              }}
-                              title={
-                                isLoggedIn
-                                  ? p.isActive
-                                    ? "Mark as Inactive"
-                                    : "Mark as Active"
-                                  : "Login as admin to change status"
-                              }
-                            >
-                              {p.isActive ? (
-                                <FaToggleOn />
-                              ) : (
-                                <FaToggleOff />
-                              )}
+                            {p.mrp > p.sellingPrice && (
+                              <span className="text-[10px] text-slate-300 line-through">₹{p.mrp?.toLocaleString()}</span>
+                            )}
+                            {p.offerId?.title && (
+                              <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-500 text-[8px] font-black uppercase tracking-tight">
+                                {p.offerId.title}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="text-xs font-bold text-slate-700">{p.stock || 0} {p.unit}</div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${
+                               p.status === "Active" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"
+                           }`}>
+                               {p.status}
+                           </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-1.5 grayscale opacity-30 group-hover:grayscale-0 group-hover:opacity-100 transition-all">
+                            <button onClick={() => setViewProduct(p)} className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200" title="Quick View">
+                              <FaEye size={12} />
                             </button>
-
-                            {/* View Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleView(p)}
-                              className="p-2 rounded-lg border text-xs"
-                              style={{
-                                borderColor: themeColors.border,
-                                color: themeColors.text,
-                              }}
-                              title="View full details"
-                            >
-                              <FaEye />
+                            <button onClick={() => handleOpenModal(p)} className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-800 hover:text-white" title="Edit">
+                              <FaEdit size={12} />
                             </button>
-
-                            {/* Edit Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(p)}
-                              disabled={!isLoggedIn}
-                              className="p-2 rounded-lg border text-xs disabled:opacity-40"
-                              style={{
-                                borderColor: themeColors.border,
-                                color: themeColors.text,
-                              }}
-                              title={
-                                isLoggedIn
-                                  ? "Edit"
-                                  : "Login as admin to edit"
-                              }
-                            >
-                              <FaEdit />
-                            </button>
-
-                            {/* Delete Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(p)}
-                              disabled={!isLoggedIn || saving}
-                              className="p-2 rounded-lg border text-xs disabled:opacity-40"
-                              style={{
-                                borderColor: themeColors.border,
-                                color: themeColors.danger,
-                              }}
-                              title={
-                                isLoggedIn
-                                  ? "Delete"
-                                  : "Login as admin to delete"
-                              }
-                            >
-                              <FaTrash />
+                            <button onClick={() => handleDelete(p)} className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white" title="Delete">
+                              <FaTrash size={12} />
                             </button>
                           </div>
                         </td>
                       </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
-          // CARD VIEW
-          <div>
-            {loading ? (
-              <p
-                className="text-sm text-center py-6"
-                style={{ color: themeColors.text }}
-              >
-                Loading products...
-              </p>
-            ) : filteredProducts.length === 0 ? (
-              <p
-                className="text-sm text-center py-6"
-                style={{ color: themeColors.text }}
-              >
-                No products found.
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredProducts.map((p) => {
-                  const catName =
-                    p.category?.name ||
-                    p.categoryId?.name ||
-                    categoryMap[p.categoryId] ||
-                    "-";
-                  const finalPrice = getFinalPrice(p);
-                  return (
-                    <div
-                      key={p._id || p.id || p.slug}
-                      className="rounded-xl border flex flex-col overflow-hidden"
-                      style={{ borderColor: themeColors.border }}
-                    >
-                      {/* Image */}
-                      <div className="relative">
-                        <img
-                          src={
-                            p.mainImage?.url ||
-                            p.galleryImages?.[0]?.url ||
-                            ""
-                          }
-                          alt={p.name}
-                          className="w-full h-40 object-cover"
-                        />
-                        {p.discountPercent ? (
-                          <span
-                            className="absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-semibold"
-                            style={{
-                              backgroundColor:
-                                themeColors.primary + "dd",
-                              color: themeColors.onPrimary,
-                            }}
-                          >
-                            {p.discountPercent}% OFF
-                          </span>
-                        ) : null}
-                        {!p.isActive && (
-                          <span
-                            className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-semibold"
-                            style={{
-                              backgroundColor:
-                                themeColors.danger + "dd",
-                              color: themeColors.onPrimary,
-                            }}
-                          >
-                            Inactive
-                          </span>
-                        )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {filteredProducts.map(p => (
+                  <div key={p._id || p.id} className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm hover:shadow-xl transition-all group">
+                      <div className="aspect-square rounded-2xl bg-slate-50 mb-4 overflow-hidden relative border border-slate-100">
+                          {p.image ? (
+                              <img src={`${import.meta.env.VITE_API_BASE_URL.replace("/api", "")}${p.image}`} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-500" alt="" />
+                          ) : (
+                              <div className="w-full h-full flex items-center justify-center"><FaCubes className="text-slate-200 text-4xl" /></div>
+                          )}
+                          <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-[9px] font-black uppercase shadow-sm">
+                              {p.categoryId?.name || p.category}
+                          </div>
                       </div>
-
-                      {/* Content */}
-                      <div
-                        className="p-4 flex-1 flex flex-col gap-2"
-                        style={{ backgroundColor: themeColors.surface }}
-                      >
-                        <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-black text-slate-800 uppercase text-sm mb-1 tracking-tight line-clamp-1">{p.name}</h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4">{p.brand || "Unbranded"}</p>
+                      
+                      <div className="flex items-center justify-between">
                           <div>
-                            <h3
-                              className="font-semibold text-sm mb-1"
-                              style={{ color: themeColors.text }}
-                            >
-                              {p.name}
-                            </h3>
-                            <p
-                              className="text-xs opacity-75"
-                              style={{ color: themeColors.text }}
-                            >
-                              {catName}
-                            </p>
+                              <div className="text-lg font-black text-slate-900 tracking-tight">₹{p.sellingPrice?.toLocaleString()}</div>
+                              <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-slate-300 line-through tracking-wider">₹{p.mrp?.toLocaleString()}</span>
+                                  {p.offerId?.title && (
+                                      <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-500 text-[8px] font-black uppercase tracking-tight">
+                                          {p.offerId.title}
+                                      </span>
+                                  )}
+                              </div>
                           </div>
-                          <div className="text-right">
-                            <div
-                              className="text-sm font-bold"
-                              style={{ color: themeColors.primary }}
-                            >
-                              {fmtCurrency(finalPrice)}
-                            </div>
-                            {p.discountPercent ? (
-                              <div className="text-[11px] opacity-70 line-through">
-                                {fmtCurrency(p.price)}
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        {p.description && (
-                          <p
-                            className="text-xs mt-1 line-clamp-2"
-                            style={{ color: themeColors.text }}
-                          >
-                            {p.description}
-                          </p>
-                        )}
-                        {p.about && (
-                          <p
-                            className="text-[11px] opacity-70"
-                            style={{ color: themeColors.text }}
-                          >
-                            {p.about}
-                          </p>
-                        )}
-
-                        {/* Sizes / Colors */}
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {Array.isArray(p.sizes) &&
-                            p.sizes.map((s) => (
-                              <span
-                                key={s}
-                                className="px-2 py-0.5 rounded-full text-[11px]"
-                                style={{
-                                  backgroundColor:
-                                    themeColors.background + "60",
-                                  color: themeColors.text,
-                                }}
-                              >
-                                {s}
-                              </span>
-                            ))}
-                          {Array.isArray(p.colors) &&
-                            p.colors.map((c) => (
-                              <span
-                                key={c}
-                                className="px-2 py-0.5 rounded-full text-[11px]"
-                                style={{
-                                  backgroundColor:
-                                    themeColors.background + "60",
-                                  color: themeColors.text,
-                                }}
-                              >
-                                {c}
-                              </span>
-                            ))}
-                        </div>
-
-                        {/* Add-ons */}
-                        {Array.isArray(p.addOns) &&
-                          p.addOns.length > 0 && (
-                            <div className="mt-1">
-                              <p
-                                className="text-[11px] font-semibold mb-1"
-                                style={{ color: themeColors.text }}
-                              >
-                                Add-ons
-                              </p>
-                              <div className="flex flex-wrap gap-1">
-                                {p.addOns.map((a, i) => (
-                                  <span
-                                    key={i}
-                                    className="px-2 py-0.5 rounded-full text-[11px]"
-                                    style={{
-                                      backgroundColor: a.isDefault
-                                        ? (themeColors.success ||
-                                            themeColors.primary) +
-                                          "20"
-                                        : themeColors.background + "60",
-                                      color: themeColors.text,
-                                    }}
-                                  >
-                                    {a.name}{" "}
-                                    {a.price
-                                      ? `(+${fmtCurrency(a.price)})`
-                                      : ""}
-                                    {a.isDefault ? " • Default" : ""}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                        {/* Gallery thumbnails */}
-                        {Array.isArray(p.galleryImages) &&
-                          p.galleryImages.length > 0 && (
-                            <div className="mt-2">
-                              <div className="flex items-center gap-1 overflow-x-auto">
-                                {p.galleryImages.map((g, i) => (
-                                  <img
-                                    key={i}
-                                    src={g.url}
-                                    alt={`${p.name} ${i + 1}`}
-                                    className="w-10 h-10 object-cover rounded-md flex-shrink-0"
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                        {/* Footer */}
-                        <div className="mt-auto pt-2 flex items-center justify-between text-[11px]">
-                          <span
-                            style={{ color: themeColors.text }}
-                            className="opacity-70"
-                          >
-                            Created:{" "}
-                            {p.createdAt ? fmtDate(p.createdAt) : "-"}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            {/* View button in card */}
-                            <button
-                              type="button"
-                              onClick={() => handleView(p)}
-                              className="px-2 py-1 rounded-lg border text-[11px] flex items-center gap-1"
-                              style={{
-                                borderColor: themeColors.border,
-                                color: themeColors.text,
-                              }}
-                              title="View full details"
-                            >
-                              <FaEye /> View
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button onClick={() => setViewProduct(p)} className="p-2.5 bg-slate-100 text-slate-800 rounded-xl hover:bg-white shadow-sm">
+                                <FaEye size={12} />
                             </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(p)}
-                              disabled={!isLoggedIn}
-                              className="px-2 py-1 rounded-lg border text-[11px] flex items-center gap-1 disabled:opacity-40"
-                              style={{
-                                borderColor: themeColors.border,
-                                color: themeColors.text,
-                              }}
-                              title={
-                                isLoggedIn
-                                  ? "Edit"
-                                  : "Login as admin to edit"
-                              }
-                            >
-                              <FaEdit /> Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(p)}
-                              disabled={!isLoggedIn || saving}
-                              className="px-2 py-1 rounded-lg border text-[11px] flex items-center gap-1 disabled:opacity-40"
-                              style={{
-                                borderColor: themeColors.border,
-                                color: themeColors.danger,
-                              }}
-                              title={
-                                isLoggedIn
-                                  ? "Delete"
-                                  : "Login as admin to delete"
-                              }
-                            >
-                              <FaTrash /> Delete
+                            <button onClick={() => handleOpenModal(p)} className="p-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-700 shadow-lg">
+                                <FaEdit size={12} />
                             </button>
                           </div>
-                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                  </div>
+              ))}
           </div>
         )}
       </div>
 
-      {/* Add / Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40">
-          <div
-            className="w-full max-w-3xl mx-4 rounded-2xl shadow-lg border max-h-[90vh] overflow-hidden flex flex-col"
-            style={{
-              backgroundColor: themeColors.surface,
-              borderColor: themeColors.border,
-            }}
-          >
-            <div
-              className="flex items-center justify-between px-6 py-4 border-b"
-              style={{ borderColor: themeColors.border }}
-            >
-              <h2
-                className="text-lg font-semibold flex items-center gap-2"
-                style={{ color: themeColors.text }}
-              >
-                <FaPlus />
-                {editing ? "Edit Medicine" : "Add New Medicine"}
-              </h2>
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  resetForm();
-                }}
-                className="text-xl leading-none px-2"
-                style={{ color: themeColors.text }}
-              >
-                ×
-              </button>
-            </div>
-
-            <form
-              onSubmit={handleSubmit}
-              className="px-6 py-4 space-y-4 overflow-y-auto"
-            >
-              {/* inline error */}
-              {error && (
-                <div
-                  className="p-2 rounded-lg text-xs border"
-                  style={{
-                    backgroundColor: themeColors.danger + "15",
-                    borderColor: themeColors.danger + "50",
-                    color: themeColors.danger,
-                  }}
-                >
-                  {error}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Name */}
+      {/* Quick View Modal */}
+      {viewProduct && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-6 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] w-full max-w-2xl overflow-hidden shadow-2xl relative">
+            <button onClick={() => setViewProduct(null)} className="absolute top-6 right-6 p-2 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 z-10">
+              <FaTimes />
+            </button>
+            <div className="grid grid-cols-1 md:grid-cols-2">
+              <div className="aspect-square bg-slate-50 flex items-center justify-center border-r border-slate-100">
+                {viewProduct.image ? (
+                  <img src={`${import.meta.env.VITE_API_BASE_URL.replace("/api", "")}${viewProduct.image}`} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  <FaCubes size={60} className="text-slate-200" />
+                )}
+              </div>
+              <div className="p-10 space-y-6 max-h-[80vh] overflow-y-auto">
                 <div>
-                  <label
-                    htmlFor="name"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    value={form.name}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                    placeholder="Paracetamol 500mg Tablets"
-                  />
+                  <div className="text-[10px] font-black uppercase text-emerald-500 tracking-[0.2em] mb-2">{viewProduct.categoryId?.name || viewProduct.category}</div>
+                  <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight leading-tight">{viewProduct.name}</h2>
+                  <p className="text-xs font-bold text-slate-400 uppercase mt-1 tracking-widest">{viewProduct.brand || "In-House Product"}</p>
                 </div>
 
-                {/* Category */}
-                <div>
-                  <label
-                    htmlFor="categoryId"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Category
-                  </label>
-                  <select
-                    id="categoryId"
-                    name="categoryId"
-                    value={form.categoryId}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 rounded-lg border text-sm"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                  >
-                    <option value="">Select category</option>
-                    {categories.map((c) => (
-                      <option key={c._id || c.id} value={c._id || c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Manufacturer */}
-                <div>
-                  <label
-                    htmlFor="manufacturer"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Manufacturer
-                  </label>
-                  <input
-                    id="manufacturer"
-                    name="manufacturer"
-                    type="text"
-                    value={form.manufacturer}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                    placeholder="e.g. Cipla, Sun Pharma"
-                  />
-                </div>
-
-                {/* Batch No */}
-                <div>
-                  <label
-                    htmlFor="batchNo"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Batch No
-                  </label>
-                  <input
-                    id="batchNo"
-                    name="batchNo"
-                    type="text"
-                    value={form.batchNo}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                    placeholder="e.g. BATCH123"
-                  />
-                </div>
-
-                {/* Expiry Date */}
-                <div>
-                  <label
-                    htmlFor="expiryDate"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Expiry Date
-                  </label>
-                  <input
-                    id="expiryDate"
-                    name="expiryDate"
-                    type="date"
-                    value={form.expiryDate}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                  />
-                </div>     
-
-                {/* Stock & Unit */}
-                 <div>
-                  <label
-                    htmlFor="stock"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Stock Qty <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex gap-2">
-                     <input
-                      id="stock"
-                      name="stock"
-                      type="number"
-                      min="0"
-                      value={form.stock}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                      style={{
-                        backgroundColor: themeColors.background,
-                        borderColor: themeColors.border,
-                        color: themeColors.text,
-                      }}
-                      placeholder="100"
-                    />
-                     <select
-                      id="unit"
-                      name="unit"
-                      value={form.unit}
-                      onChange={handleChange}
-                      className="px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                      style={{
-                        backgroundColor: themeColors.background,
-                        borderColor: themeColors.border,
-                        color: themeColors.text,
-                      }}
-                    >
-                      <option value="Pcs">Pcs</option>
-                      <option value="Box">Box</option>
-                      <option value="Strip">Strip</option>
-                      <option value="Bottle">Bottle</option>
-                       <option value="Pack">Pack</option>
-                      <option value="Kg">Kg</option>
-                      <option value="Ltr">Ltr</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* MRP */}
-                <div>
-                  <label
-                    htmlFor="mrp"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    MRP (₹) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="mrp"
-                    name="mrp"
-                    type="number"
-                    min="0"
-                    value={form.mrp}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                    placeholder="3500"
-                  />
-                </div>
-
-                {/* Purchase Price */}
-                 <div>
-                  <label
-                    htmlFor="purchasePrice"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Purchase Price (₹)
-                  </label>
-                  <input
-                    id="purchasePrice"
-                    name="purchasePrice"
-                    type="number"
-                    min="0"
-                    value={form.purchasePrice}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                    placeholder="2000"
-                  />
-                </div>   
-
-                {/* Selling Price */}
-                <div>
-                  <label
-                    htmlFor="sellingPrice"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Selling Price (₹) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="sellingPrice"
-                    name="sellingPrice"
-                    type="number"
-                    min="0"
-                    value={form.sellingPrice}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                    placeholder="2500"
-                  />
-                </div>
-
-                 {/* Margin (Auto/Manual) */}
-                 <div>
-                  <label
-                    htmlFor="margin"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Margin (%)
-                  </label>
-                  <input
-                    id="margin"
-                    name="margin"
-                    type="number"
-                    value={form.margin}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                    placeholder="Auto or Manual"
-                  />
-                </div>
-
-                {/* GST */}
-                <div>
-                  <label
-                    htmlFor="gst"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    GST (%)
-                  </label>
-                  <select
-                    id="gst"
-                    name="gst"
-                    value={form.gst}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                  >
-                    <option value="0">0%</option>
-                    <option value="5">5%</option>
-                    <option value="12">12%</option>
-                    <option value="18">18%</option>
-                    <option value="28">28%</option>
-                  </select>
-                </div>      
-
-                {/* Discount */}
-                <div>
-                  <label
-                    htmlFor="discountPercent"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Discount (%)
-                  </label>
-                  <input
-                    id="discountPercent"
-                    name="discountPercent"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={form.discountPercent || ""}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                    placeholder="10"
-                  />
-                </div>
-
-                {/* Prescription Required Toggle */}
-                <div className="flex items-center gap-2 md:col-span-2 p-3 border rounded-lg" style={{ borderColor: themeColors.border }}>
-                  <input
-                    id="prescriptionRequired"
-                    name="prescriptionRequired"
-                    type="checkbox"
-                    checked={form.prescriptionRequired}
-                    onChange={handleChange}
-                    className="h-5 w-5"
-                  />
-                  <div>
-                      <label
-                        htmlFor="prescriptionRequired"
-                        className="text-sm font-bold block"
-                        style={{ color: themeColors.text }}
-                      >
-                        Prescription Required?
-                      </label>
-                      <p className="text-xs opacity-70" style={{ color: themeColors.text }}>
-                         If checked, users must upload a prescription. Admin manually verifies it.
-                      </p>
-                  </div>
-                </div>
-
-                {/* CSV File Attachment (Placeholder for now) */}
-                 <div className="md:col-span-2 p-3 border border-dashed rounded-lg" style={{ borderColor: themeColors.border }}>
-                    <label className="text-sm font-bold block mb-1" style={{ color: themeColors.text }}> Attach CSV / Data File (Optional)</label>
-                    <input type="file" 
-                      accept=".csv"
-                      onChange={(e) => setCsvFile(e.target.files ? e.target.files[0] : null)}
-                      className="block w-full text-sm text-slate-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-full file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-violet-50 file:text-violet-700
-                      hover:file:bg-violet-100
-                    "/>
-                    {csvFile && <p className="text-xs text-green-600 mt-1">File selected: {csvFile.name} (Other fields will be ignored)</p>}
-                 </div>
-
-                {/* Description */}
-                <div className="md:col-span-2">
-                  <label
-                    htmlFor="description"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    value={form.description}
-                    onChange={handleChange}
-                    rows={2}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 resize-none"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                    placeholder="Pain relief medication for fever and headaches"
-                  />
-                </div>
-
-                {/* About */}
-                <div className="md:col-span-2">
-                  <label
-                    htmlFor="about"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    About
-                  </label>
-                  <textarea
-                    id="about"
-                    name="about"
-                    value={form.about}
-                    onChange={handleChange}
-                    rows={2}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 resize-none"
-                    style={{
-                      backgroundColor: themeColors.background,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                    placeholder="Fast-acting, doctor recommended formula..."
-                  />
-                </div>
-
-                {/* Active */}
-                <div className="flex items-center gap-2 md:col-span-2">
-                  <input
-                    id="isActive"
-                    name="isActive"
-                    type="checkbox"
-                    checked={form.isActive}
-                    onChange={handleChange}
-                    className="h-4 w-4"
-                  />
-                  <label
-                    htmlFor="isActive"
-                    className="text-sm"
-                    style={{ color: themeColors.text }}
-                  >
-                    Active
-                  </label>
-                </div>
-
-                {/* Sizes dynamic UI */}
-                <div className="md:col-span-1">
-                  <label
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Sizes
-                  </label>
-                  <p
-                    className="text-[11px] mb-2 opacity-70"
-                    style={{ color: themeColors.text }}
-                  >
-                    e.g. 18x24, 24x24 etc.
-                  </p>
-                  <div className="space-y-2">
-                    {sizesList.map((s, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2"
-                      >
-                        <input
-                          type="text"
-                          value={s}
-                          onChange={(e) =>
-                            handleSizeChange(idx, e.target.value)
-                          }
-                          className="flex-1 px-2 py-1 rounded border text-xs"
-                          style={{
-                            backgroundColor: themeColors.surface,
-                            borderColor: themeColors.border,
-                            color: themeColors.text,
-                          }}
-                          placeholder="10mg, 20mg, 50mg"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleSizeRemoveRow(idx)}
-                          className="px-2 py-1 rounded text-[11px] border"
-                          style={{
-                            borderColor: themeColors.border,
-                            color: themeColors.danger,
-                          }}
-                        >
-                          X
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSizeAddRow}
-                    className="mt-2 px-3 py-1 rounded-lg text-xs border flex items-center gap-1"
-                    style={{
-                      backgroundColor: themeColors.surface,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                  >
-                    <FaPlus /> Add Size
-                  </button>
-                </div>
-
-                {/* Colors dynamic UI */}
-                <div className="md:col-span-1">
-                  <label
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Colors
-                  </label>
-                  <p
-                    className="text-[11px] mb-2 opacity-70"
-                    style={{ color: themeColors.text }}
-                  >
-                    e.g. White, Warm White etc.
-                  </p>
-                  <div className="space-y-2">
-                    {colorsList.map((c, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2"
-                      >
-                        <input
-                          type="text"
-                          value={c}
-                          onChange={(e) =>
-                            handleColorChange(idx, e.target.value)
-                          }
-                          className="flex-1 px-2 py-1 rounded border text-xs"
-                          style={{
-                            backgroundColor: themeColors.surface,
-                            borderColor: themeColors.border,
-                            color: themeColors.text,
-                          }}
-                          placeholder="White, Blue"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleColorRemoveRow(idx)}
-                          className="px-2 py-1 rounded text-[11px] border"
-                          style={{
-                            borderColor: themeColors.border,
-                            color: themeColors.danger,
-                          }}
-                        >
-                          X
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleColorAddRow}
-                    className="mt-2 px-3 py-1 rounded-lg text-xs border flex items-center gap-1"
-                    style={{
-                      backgroundColor: themeColors.surface,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                  >
-                    <FaPlus /> Add Color
-                  </button>
-                </div>
-
-                {/* Add-ons friendly UI */}
-                <div className="md:col-span-2">
-                  <label
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Add-ons
-                  </label>
-                  <p
-                    className="text-[11px] mb-2 opacity-70"
-                    style={{ color: themeColors.text }}
-                  >
-                    For example: None (0, default), UV Light (+₹499).
-                  </p>
-                  <div className="space-y-2">
-                    {addOns.map((a, idx) => (
-                      <div
-                        key={idx}
-                        className="flex flex-wrap items-center gap-2 p-2 rounded-lg border"
-                        style={{
-                          borderColor: themeColors.border,
-                          backgroundColor: themeColors.background,
-                        }}
-                      >
-                        <input
-                          type="text"
-                          placeholder="Name"
-                          value={a.name}
-                          onChange={(e) =>
-                            handleAddOnChange(
-                              idx,
-                              "name",
-                              e.target.value
-                            )
-                          }
-                          className="flex-1 min-w-[120px] px-2 py-1 rounded border text-xs"
-                          style={{
-                            backgroundColor: themeColors.surface,
-                            borderColor: themeColors.border,
-                            color: themeColors.text,
-                          }}
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="Price"
-                          value={a.price}
-                          onChange={(e) =>
-                            handleAddOnChange(
-                              idx,
-                              "price",
-                              e.target.value
-                            )
-                          }
-                          className="w-24 px-2 py-1 rounded border text-xs"
-                          style={{
-                            backgroundColor: themeColors.surface,
-                            borderColor: themeColors.border,
-                            color: themeColors.text,
-                          }}
-                        />
-                        <label className="flex items-center gap-1 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={a.isDefault}
-                            onChange={(e) =>
-                              handleAddOnChange(
-                                idx,
-                                "isDefault",
-                                e.target.checked
-                              )
-                            }
-                          />
-                          <span style={{ color: themeColors.text }}>
-                            Default
-                          </span>
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => handleAddOnRemoveRow(idx)}
-                          className="px-2 py-1 rounded text-[11px] border"
-                          style={{
-                            borderColor: themeColors.border,
-                            color: themeColors.danger,
-                          }}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddOnAddRow}
-                    className="mt-2 px-3 py-1 rounded-lg text-xs border flex items-center gap-1"
-                    style={{
-                      backgroundColor: themeColors.surface,
-                      borderColor: themeColors.border,
-                      color: themeColors.text,
-                    }}
-                  >
-                    <FaPlus /> Add Add-on
-                  </button>
-                </div>
-
-                {/* Main Image (pretty input) */}
-                <div className="md:col-span-1">
-                  <label
-                    htmlFor="mainImageInput"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Main Image
-                  </label>
-                  <label
-                    htmlFor="mainImageInput"
-                    className="block border-2 border-dashed rounded-lg px-3 py-2 text-xs cursor-pointer flex items-center justify-between"
-                    style={{
-                      borderColor: themeColors.border,
-                      backgroundColor: themeColors.background,
-                      color: themeColors.text,
-                    }}
-                  >
-                    <span className="flex items-center gap-2">
-                      <FaImage />
-                      {mainImageFile
-                        ? mainImageFile.name
-                        : "Click to choose main image"}
-                    </span>
-                    <span
-                      className="px-2 py-1 rounded-full border text-[10px]"
-                      style={{ borderColor: themeColors.border }}
-                    >
-                      Browse
-                    </span>
-                  </label>
-                  <input
-                    id="mainImageInput"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleMainImageChange}
-                    className="hidden"
-                  />
-                </div>
-
-                {/* Gallery Images (pretty input) */}
-                <div className="md:col-span-1">
-                  <label
-                    htmlFor="galleryImagesInput"
-                    className="block mb-1 text-sm font-medium"
-                    style={{ color: themeColors.text }}
-                  >
-                    Gallery Images (multiple)
-                  </label>
-                  <label
-                    htmlFor="galleryImagesInput"
-                    className="block border-2 border-dashed rounded-lg px-3 py-2 text-xs cursor-pointer flex items-center justify-between"
-                    style={{
-                      borderColor: themeColors.border,
-                      backgroundColor: themeColors.background,
-                      color: themeColors.text,
-                    }}
-                  >
-                    <span className="flex items-center gap-2">
-                      <FaImage />
-                      {galleryImageFiles.length
-                        ? `${galleryImageFiles.length} file(s) selected`
-                        : "Click to choose gallery images"}
-                    </span>
-                    <span
-                      className="px-2 py-1 rounded-full border text-[10px]"
-                      style={{ borderColor: themeColors.border }}
-                    >
-                      Browse
-                    </span>
-                  </label>
-                  <input
-                    id="galleryImagesInput"
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleGalleryImagesChange}
-                    className="hidden"
-                  />
-                  {galleryImageFiles.length > 0 && (
-                    <ul
-                      className="mt-1 max-h-20 overflow-y-auto text-[11px]"
-                      style={{ color: themeColors.text }}
-                    >
-                      {galleryImageFiles.map((f, i) => (
-                        <li key={i}>{f.name}</li>
-                      ))}
-                    </ul>
+                <div className="flex items-end gap-3">
+                  <div className="text-3xl font-black text-slate-900 tracking-tighter">₹{viewProduct.sellingPrice?.toLocaleString()}</div>
+                  {viewProduct.mrp > viewProduct.sellingPrice && (
+                    <div className="text-sm font-bold text-slate-300 line-through mb-1.5">₹{viewProduct.mrp?.toLocaleString()}</div>
+                  )}
+                  {viewProduct.discountPercent > 0 && (
+                    <div className="px-2 py-0.5 rounded bg-emerald-500 text-white text-[9px] font-black uppercase mb-1.5">{viewProduct.discountPercent}% OFF</div>
                   )}
                 </div>
-              </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    resetForm();
-                  }}
-                  disabled={saving}
-                  className="px-3 py-2 rounded-lg text-sm border disabled:opacity-50"
-                  style={{
-                    backgroundColor: themeColors.surface,
-                    borderColor: themeColors.border,
-                    color: themeColors.text,
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving || !isLoggedIn}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor: themeColors.primary,
-                    color: themeColors.onPrimary,
-                  }}
-                >
-                  {saving
-                    ? editing
-                      ? "Saving..."
-                      : "Creating..."
-                    : editing
-                    ? "Save Changes"
-                    : "Create Medicine"}
+                <div className="space-y-4 pt-4 border-t border-slate-100">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-400 uppercase tracking-widest">Availability</span>
+                    <span className="font-black text-slate-800">{viewProduct.stock} {viewProduct.unit} In Stock</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-400 uppercase tracking-widest">Manufacturer</span>
+                    <span className="font-black text-slate-800">{viewProduct.manufacturer || "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-400 uppercase tracking-widest">Status</span>
+                    <span className={`font-black uppercase text-[10px] ${viewProduct.status === "Active" ? "text-emerald-500" : "text-red-500"}`}>{viewProduct.status}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Description</div>
+                  <p className="text-xs text-slate-500 leading-relaxed">{viewProduct.description || "No detailed description provided for this item."}</p>
+                </div>
+
+                <button onClick={() => { setViewProduct(null); handleOpenModal(viewProduct); }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">
+                  Modify Product Details
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* FULL VIEW MODAL */}
-      {viewProduct && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
-          <div
-            className="w-full max-w-4xl mx-4 rounded-2xl shadow-lg border max-h-[90vh] overflow-hidden flex flex-col"
-            style={{
-              backgroundColor: themeColors.surface,
-              borderColor: themeColors.border,
-            }}
-          >
-            <div
-              className="flex items-center justify-between px-6 py-4 border-b"
-              style={{ borderColor: themeColors.border }}
-            >
-              <div className="flex items-center gap-2">
-                <h2
-                  className="text-lg font-semibold"
-                  style={{ color: themeColors.text }}
-                >
-                  {viewProduct.name}
-                </h2>
-                <span
-                  className="px-2 py-1 rounded-full text-xs font-semibold"
-                  style={{
-                    backgroundColor: viewProduct.isActive
-                      ? (themeColors.success ||
-                          themeColors.primary) + "15"
-                      : themeColors.border,
-                    color: viewProduct.isActive
-                      ? themeColors.success || themeColors.primary
-                      : themeColors.text,
-                  }}
-                >
-                  {viewProduct.isActive ? "Active" : "Inactive"}
-                </span>
-              </div>
-              <button
-                onClick={() => setViewProduct(null)}
-                className="text-xl leading-none px-2"
-                style={{ color: themeColors.text }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="px-6 py-4 overflow-y-auto space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Images section */}
-                <div className="space-y-3">
-                  <div
-                    className="rounded-lg overflow-hidden border"
-                    style={{ borderColor: themeColors.border }}
-                  >
-                    <img
-                      src={
-                        viewProduct.mainImage?.url ||
-                        viewProduct.galleryImages?.[0]?.url ||
-                        ""
-                      }
-                      alt={viewProduct.name}
-                      className="w-full h-56 object-cover"
-                    />
-                  </div>
-                  {Array.isArray(viewProduct.galleryImages) &&
-                    viewProduct.galleryImages.length > 0 && (
-                      <div>
-                        <p
-                          className="text-xs mb-2 font-medium"
-                          style={{ color: themeColors.text }}
-                        >
-                          Gallery
-                        </p>
-                        <div className="flex gap-2 overflow-x-auto">
-                          {viewProduct.galleryImages.map((g, i) => (
-                            <img
-                              key={i}
-                              src={g.url}
-                              alt={`${viewProduct.name} ${i + 1}`}
-                              className="w-16 h-16 object-cover rounded-md flex-shrink-0 border"
-                              style={{
-                                borderColor: themeColors.border,
-                              }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                </div>
-
-                {/* Details section */}
-                <div className="space-y-4 text-sm">
-                  
-                  {/* Manufacturer & Category */}
-                  <div className="grid grid-cols-2 gap-4">
-                     <div>
-                        <p className="text-xs uppercase font-semibold mb-1 opacity-70" style={{ color: themeColors.text }}>Category</p>
-                        <p className="font-medium" style={{ color: themeColors.text }}>
-                          {viewProduct.category?.name || viewProduct.categoryId?.name || categoryMap[viewProduct.categoryId] || "-"}
-                        </p>
-                     </div>
-                     <div>
-                        <p className="text-xs uppercase font-semibold mb-1 opacity-70" style={{ color: themeColors.text }}>Manufacturer</p>
-                        <p className="font-medium" style={{ color: themeColors.text }}>{viewProduct.manufacturer || "-"}</p>
-                     </div>
-                  </div>
-
-                   {/* Batch & Expiry */}
-                  <div className="grid grid-cols-2 gap-4">
-                     <div>
-                        <p className="text-xs uppercase font-semibold mb-1 opacity-70" style={{ color: themeColors.text }}>Batch No</p>
-                        <p className="font-medium" style={{ color: themeColors.text }}>{viewProduct.batchNo || "-"}</p>
-                     </div>
-                     <div>
-                        <p className="text-xs uppercase font-semibold mb-1 opacity-70" style={{ color: themeColors.text }}>Expiry Date</p>
-                        <p className="font-medium" style={{ color: themeColors.text }}>{viewProduct.expiryDate ? fmtDate(viewProduct.expiryDate) : "-"}</p>
-                     </div>
-                  </div>
-
-                  {/* Stock & Unit */}
-                   <div className="grid grid-cols-2 gap-4">
-                     <div>
-                        <p className="text-xs uppercase font-semibold mb-1 opacity-70" style={{ color: themeColors.text }}>Stock</p>
-                         <span className={`px-2 py-1 rounded text-xs font-bold ${viewProduct.stock < 10 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
-                            {viewProduct.stock || 0}
-                         </span>
-                     </div>
-                     <div>
-                        <p className="text-xs uppercase font-semibold mb-1 opacity-70" style={{ color: themeColors.text }}>Unit</p>
-                        <p className="font-medium" style={{ color: themeColors.text }}>{viewProduct.unit || "Pcs"}</p>
-                     </div>
-                  </div>
-
-                  {/* Pricing Details */}
-                  <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: themeColors.border, backgroundColor: themeColors.background + "40" }}>
-                      <p className="text-sm font-bold border-b pb-2 mb-2" style={{ borderColor: themeColors.border, color: themeColors.text }}>Pricing & Profit</p>
-                      
-                      <div className="grid grid-cols-2 gap-y-3 gap-x-4">
-                          <div>
-                            <p className="text-xs opacity-70">Item MRP</p>
-                            <p className="font-semibold">{fmtCurrency(viewProduct.mrp)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs opacity-70">Purchase Price</p>
-                            <p className="font-semibold">{fmtCurrency(viewProduct.purchasePrice)}</p>
-                          </div>
-                          
-                           <div>
-                            <p className="text-xs opacity-70">Selling Price</p>
-                            <p className="font-bold text-lg" style={{ color: themeColors.primary }}>{fmtCurrency(getFinalPrice(viewProduct))}</p>
-                             {viewProduct.discountPercent > 0 && (
-                                <span className="text-xs text-green-600 font-semibold">{viewProduct.discountPercent}% OFF</span>
-                             )}
-                          </div>
-                          
-                           <div>
-                            <p className="text-xs opacity-70">GST</p>
-                            <p className="font-semibold">{viewProduct.gst || 0}%</p>
-                          </div>
-
-                           <div className="col-span-2 pt-2 border-t mt-1" style={{ borderColor: themeColors.border }}>
-                              <p className="text-xs opacity-70">Calculated Margin / Profit</p>
-                              <p className="font-bold text-green-600">
-                                {viewProduct.purchasePrice && viewProduct.sellingPrice 
-                                   ? fmtCurrency(viewProduct.sellingPrice - viewProduct.purchasePrice)
-                                   : "-"
-                                } 
-                                {viewProduct.purchasePrice && viewProduct.sellingPrice && (
-                                   <span className="text-xs font-normal ml-1 opacity-80">
-                                      ({Math.round(((viewProduct.sellingPrice - viewProduct.purchasePrice) / viewProduct.purchasePrice) * 100)}%)
-                                   </span>
-                                )}
-                              </p>
-                           </div>
-                      </div>
-                  </div>
-                  
-                  {/* Prescription Status */}
-                   <div className="flex items-center gap-3 p-3 rounded-lg border" style={{ borderColor: themeColors.border }}>
-                      <div className={`w-3 h-3 rounded-full ${viewProduct.prescriptionRequired ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                      <div>
-                        <p className="text-xs font-bold" style={{ color: themeColors.text }}>Prescription Required?</p>
-                        <p className="text-xs opacity-70" style={{ color: themeColors.text }}>
-                          {viewProduct.prescriptionRequired ? "Yes - User must upload prescription" : "No - Available over the counter"}
-                        </p>
-                      </div>
-                   </div>
-
-                  {viewProduct.description && (
+      {/* Modal - App Dashboard Style */}
+      {showModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-6 overflow-y-auto">
+            <div className="bg-white rounded-[2.5rem] p-10 w-full max-w-4xl shadow-2xl border border-slate-200 relative my-auto animate-in zoom-in duration-300">
+                <div className="flex justify-between items-center mb-10 border-b border-slate-100 pb-6">
                     <div>
-                      <p
-                        className="text-xs uppercase font-semibold mb-1 opacity-70"
-                        style={{ color: themeColors.text }}
-                      >
-                        Description
-                      </p>
-                      <p className="text-sm leading-relaxed" style={{ color: themeColors.text }}>
-                        {viewProduct.description}
-                      </p>
+                        <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter">
+                            {editingProduct ? "Revise Item Listing" : "Deploy New Catalog Entry"}
+                        </h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Configure visibility and commerce data</p>
                     </div>
-                  )}
-
-                  {viewProduct.about && (
-                    <div>
-                      <p
-                        className="text-xs uppercase font-semibold mb-1 opacity-70"
-                        style={{ color: themeColors.text }}
-                      >
-                        About
-                      </p>
-                      <p
-                        className="text-xs leading-relaxed"
-                        style={{ color: themeColors.text }}
-                      >
-                        {viewProduct.about}
-                      </p>
-                    </div>
-                  )}
-
-                  {(Array.isArray(viewProduct.sizes) &&
-                    viewProduct.sizes.length > 0) && (
-                    <div>
-                      <p
-                        className="text-xs uppercase font-semibold mb-1 opacity-70"
-                        style={{ color: themeColors.text }}
-                      >
-                        Sizes
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {viewProduct.sizes.map((s) => (
-                          <span
-                            key={s}
-                            className="px-2 py-0.5 rounded-full text-[11px]"
-                            style={{
-                              backgroundColor:
-                                themeColors.background + "60",
-                              color: themeColors.text,
-                            }}
-                          >
-                            {s}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {(Array.isArray(viewProduct.colors) &&
-                    viewProduct.colors.length > 0) && (
-                    <div>
-                      <p
-                        className="text-xs uppercase font-semibold mb-1 opacity-70"
-                        style={{ color: themeColors.text }}
-                      >
-                        Colors
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {viewProduct.colors.map((c) => (
-                          <span
-                            key={c}
-                            className="px-2 py-0.5 rounded-full text-[11px]"
-                            style={{
-                              backgroundColor:
-                                themeColors.background + "60",
-                              color: themeColors.text,
-                            }}
-                          >
-                            {c}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {(Array.isArray(viewProduct.addOns) &&
-                    viewProduct.addOns.length > 0) && (
-                    <div>
-                      <p
-                        className="text-xs uppercase font-semibold mb-1 opacity-70"
-                        style={{ color: themeColors.text }}
-                      >
-                        Add-ons
-                      </p>
-                       <ul className="space-y-1">
-                        {viewProduct.addOns.map((a, i) => (
-                          <li
-                            key={i}
-                            className="text-xs flex items-center gap-2"
-                             style={{ color: themeColors.text }}
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
-                            {a.name} 
-                            {a.price ? <span className="font-semibold">(+{fmtCurrency(a.price)})</span> : ""}
-                            {a.isDefault && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 rounded">Default</span>}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  <div className="pt-2 text-xs opacity-50 space-y-1 border-t mt-4" style={{ borderColor: themeColors.border }}>
-                    <p style={{ color: themeColors.text }}>
-                      Created:{" "}
-                      {viewProduct.createdAt
-                        ? new Date(viewProduct.createdAt).toLocaleString("en-IN")
-                        : "-"}
-                    </p>
-                    {viewProduct.updatedAt && (
-                      <p style={{ color: themeColors.text }}>
-                        Last Updated: {new Date(viewProduct.updatedAt).toLocaleString("en-IN")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom actions (optional quick actions) */}
-              <div className="flex justify-end gap-2 pt-2">
-                {isLoggedIn && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleEdit(viewProduct);
-                        setViewProduct(null);
-                      }}
-                      className="px-3 py-2 rounded-lg text-xs border flex items-center gap-1"
-                      style={{
-                        backgroundColor: themeColors.surface,
-                        borderColor: themeColors.border,
-                        color: themeColors.text,
-                      }}
-                    >
-                      <FaEdit /> Edit
+                    <button onClick={() => setShowModal(false)} className="bg-slate-100 hover:bg-slate-200 w-10 h-10 rounded-full flex items-center justify-center transition-all">
+                        <FaTimes className="text-slate-400" />
                     </button>
-                  </>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setViewProduct(null)}
-                  className="px-3 py-2 rounded-lg text-xs border"
-                  style={{
-                    backgroundColor: themeColors.surface,
-                    borderColor: themeColors.border,
-                    color: themeColors.text,
-                  }}
-                >
-                  Close
-                </button>
-              </div>
+                </div>
+                
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-6">
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest">Base Identity</label>
+                            <input required type="text" placeholder="Product Full Name" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-slate-800/10 focus:outline-none transition-all text-sm font-bold" 
+                                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest">Brand</label>
+                                <input type="text" placeholder="e.g. Cipla" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-slate-800/10 focus:outline-none transition-all text-sm font-bold" 
+                                    value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest">Manufacturer</label>
+                                <input type="text" placeholder="Company Name" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-slate-800/10 focus:outline-none transition-all text-sm font-bold" 
+                                    value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest">Classification</label>
+                            <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-slate-800/10 focus:outline-none transition-all text-sm font-bold appearance-none"
+                                value={formData.categoryId} onChange={e => setFormData({...formData, categoryId: e.target.value})}>
+                                <option value="">Select Category</option>
+                                {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest text-blue-500">Special Offer / Coupon (Optional)</label>
+                            <select className="w-full px-5 py-4 bg-blue-50/50 border border-blue-100 rounded-2xl focus:ring-2 focus:ring-blue-800/10 focus:outline-none transition-all text-sm font-bold appearance-none"
+                                value={formData.offerId} onChange={e => setFormData({...formData, offerId: e.target.value})}>
+                                <option value="">No Active Offer</option>
+                                {offers.map(o => <option key={o._id || o.id} value={o._id || o.id}>{o.title} ({o.code})</option>)}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest">Commercial Synopsis</label>
+                            <textarea rows="3" placeholder="Brief technical summary..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-slate-800/10 focus:outline-none transition-all text-sm font-medium resize-none" 
+                                value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="col-span-1">
+                                <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest">MRP (₹)</label>
+                                <input type="number" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold" 
+                                    value={formData.mrp} onChange={e => setFormData({...formData, mrp: e.target.value})} />
+                            </div>
+                            <div className="col-span-1">
+                                <label className={`text-[10px] font-black uppercase mb-2 block tracking-widest ${formData.offerId ? "text-blue-500" : "text-slate-400"}`}>
+                                    Price (₹) {formData.offerId && "• Auto"}
+                                </label>
+                                <input type="number" className={`w-full px-5 py-4 border rounded-2xl text-sm font-bold ${formData.offerId ? "bg-blue-50 border-blue-200" : "bg-slate-50 border-slate-200"}`} 
+                                    value={formData.sellingPrice} onChange={e => setFormData({...formData, sellingPrice: e.target.value})} />
+                            </div>
+                            <div className="col-span-1">
+                                <label className={`text-[10px] font-black uppercase mb-2 block tracking-widest ${formData.offerId ? "text-blue-500" : "text-slate-400"}`}>
+                                    Disc (%) {formData.offerId && "• Offer"}
+                                </label>
+                                <input type="number" className={`w-full px-5 py-4 border rounded-2xl text-sm font-bold ${formData.offerId ? "bg-blue-50 border-blue-200" : "bg-slate-50 border-slate-200"}`} 
+                                    value={formData.discountPercent} onChange={e => setFormData({...formData, discountPercent: e.target.value})} />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest">Initial Stock</label>
+                                <input type="number" placeholder="0" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold" 
+                                    value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest">Base Unit</label>
+                                <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold appearance-none"
+                                    value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})}>
+                                    {["Pcs", "Box", "Strip", "Pack", "Kg", "Ltr"].map(u => <option key={u} value={u}>{u}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest">Hero Shot (Main Image)</label>
+                            <input type="file" accept="image/*" onChange={e => setMainImage(e.target.files[0])} className="w-full text-[10px] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-slate-800 file:text-white hover:file:bg-slate-700 cursor-pointer p-4 bg-slate-50 border border-dashed border-slate-300 rounded-2xl" />
+                        </div>
+
+                        <div className="flex items-center justify-between p-5 bg-slate-800 rounded-2xl shadow-xl shadow-slate-900/20">
+                            <div className="flex items-center gap-3">
+                                <input type="checkbox" id="isA" className="w-5 h-5 accent-emerald-500" checked={formData.status === "Active"} onChange={e => setFormData({...formData, status: e.target.checked ? "Active" : "Inactive"})} />
+                                <label htmlFor="isA" className="text-xs font-black uppercase text-white tracking-widest">Active Deployment</label>
+                            </div>
+                            <button type="submit" className="px-8 py-3 bg-white text-slate-900 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all active:scale-95 shadow-lg">
+                                {editingProduct ? "Synchronize" : "Deploy"}
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
-          </div>
         </div>
       )}
     </div>

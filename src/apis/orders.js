@@ -1,17 +1,24 @@
 // src/apis/orders.js
 import http from "./http";
 
-// GET /api/orders  (admin list)
-export const listOrders = async () => {
-  const { data } = await http.get("/api/orders");
-  // backend: { orders: [...] } ya direct array
-  return Array.isArray(data) ? data : data.orders || [];
+export const listOrders = async (params = {}) => {
+  const { data } = await http.get("/admin/orders", { params });
+  // If it's a paginated response, handle accordingly.
+  // Assuming it returns an array for now as per previous component usage.
+  return data.orders || data;
 };
 
-// PATCH /api/orders/:orderId/status  (admin update status)
-export const updateOrderStatus = async (orderId, status) => {
-  const { data } = await http.patch(`/api/orders/${orderId}/status`, {
-    status,
-  });
+export const getOrderDetails = async (id) => {
+  const { data } = await http.get(`/admin/orders/${id}`);
+  return data;
+};
+
+export const updateOrderStatus = async (id, updateData) => {
+  const { data } = await http.put(`/admin/orders/${id}/status`, updateData);
+  return data;
+};
+
+export const deleteOrder = async (id) => {
+  const { data } = await http.delete(`/admin/orders/${id}`);
   return data;
 };

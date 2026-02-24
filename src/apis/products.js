@@ -1,38 +1,37 @@
 // src/apis/products.js
 import http from "./http";
 
-// Public: list products – GET /api/products
-export const listProducts = async () => {
-  const { data } = await http.get("/api/products");
-  // could be array ya { products: [...] }
-  return Array.isArray(data) ? data : data.products || [];
+export const listProducts = async (params = {}) => {
+  const { data } = await http.get("admin/products", { params });
+  return data.products || data;
 };
 
-// Admin: create product – POST /api/products (multipart/form-data)
+export const getProductDetails = async (idOrSlug) => {
+  const { data } = await http.get(`admin/products/${idOrSlug}`);
+  return data;
+};
+
 export const createProduct = async (formData) => {
-  const { data } = await http.post("/api/products", formData, {
+  const { data } = await http.post("admin/products", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
-  return data; // { message, product } ya product
+  return data;
 };
 
-// Admin: update product – PUT /api/products/:idOrSlug (multipart/form-data)
 export const updateProduct = async (idOrSlug, formData) => {
-  const { data } = await http.put(`/api/products/${idOrSlug}`, formData, {
+  const { data } = await http.put(`admin/products/${idOrSlug}`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
 };
 
-// Admin: delete product – DELETE /api/products/:idOrSlug
 export const deleteProduct = async (idOrSlug) => {
-  const { data } = await http.delete(`/api/products/${idOrSlug}`);
+  const { data } = await http.delete(`admin/products/${idOrSlug}`);
   return data;
 };
 
-// Admin: bulk upload - POST /api/products/bulk-upload
 export const bulkUploadProduct = async (formData) => {
-  const { data } = await http.post("/api/products/bulk-upload", formData, {
+  const { data } = await http.post("admin/products/bulk", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;

@@ -14,6 +14,7 @@ import {
   FaMoneyBillWave,
   FaIdCard,
   FaStore,
+  FaWarehouse,
 } from "react-icons/fa";
 
 // pages
@@ -27,6 +28,7 @@ const Sliders = lazy(() => import("../pages/Sliders"));
 const Blogs = lazy(() => import("../pages/Blogs"));
 const ChangePassword = lazy(() => import("../pages/ChangePassword"));
 const Shops = lazy(() => import("../pages/Shops"));
+const InventoryMaster = lazy(() => import("../pages/InventoryMaster"));
 
 // Referal pages
 const ReferalDashboard = lazy(() => import("../pages/ReferalDashboard"));
@@ -45,6 +47,9 @@ const routes = [
   { path: "/kyc-approval", component: KYCApproval, name: "KYC Approval", icon: FaIdCard },
   { path: "/withdrawal", component: Withdrawal, name: "Withdraw Request", icon: FaMoneyBillWave },
   
+  // Dynamic Inventory
+  { path: "/inventory-master", component: InventoryMaster, name: "Inventory Master", icon: FaWarehouse },
+
   // E-commerce
   { path: "/categories", component: Categories, name: "Categories", icon: FaBox },
   { path: "/products", component: Products, name: "Products", icon: FaBox },

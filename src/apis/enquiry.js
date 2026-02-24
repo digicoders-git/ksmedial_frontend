@@ -1,15 +1,12 @@
 // src/apis/enquiry.js
 import http from "./http";
 
-// GET /api/enquiry  (admin list)
-export const listEnquiries = async () => {
-  const { data } = await http.get("/api/enquiry");
-  // backend: { enquiries: [...] } या direct array
-  return Array.isArray(data) ? data : data.enquiries || [];
+export const getEnquiries = async () => {
+  const { data } = await http.get("/admin/enquiries");
+  return data.enquiries || data;
 };
 
-// PATCH /api/enquiry/:enquiryId  (admin update)
-export const updateEnquiry = async (enquiryId, payload) => {
-  const { data } = await http.put(`/api/enquiry/${enquiryId}`, payload);
+export const deleteEnquiry = async (id) => {
+  const { data } = await http.delete(`/admin/enquiries/${id}`);
   return data;
 };

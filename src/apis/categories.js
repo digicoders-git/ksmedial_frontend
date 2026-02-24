@@ -1,27 +1,22 @@
 // src/apis/categories.js
 import http from "./http";
 
-// Public Get – GET {{baseUrl}}/api/categories
 export const getCategories = async () => {
-  const { data } = await http.get("/api/categories");
-  return data; // expect: array of categories
+  const { data } = await http.get("admin/categories");
+  return data.categories || data;
 };
 
-// Admin Add – POST {{baseUrl}}/api/categories (Token via interceptor)
-export const createCategory = async (payload) => {
-  const { data } = await http.post("/api/categories", payload);
-  return data; // could be { message, category } or category
-};
-
-// Admin Update – PUT {{baseUrl}}/api/categories/:idOrSlug (Token)
-export const updateCategory = async (idOrSlug, payload) => {
-  const { data } = await http.put(`/api/categories/${idOrSlug}`, payload);
+export const createCategory = async (catData) => {
+  const { data } = await http.post("admin/categories", catData);
   return data;
-  // NOTE: If backend uses PATCH instead of PUT, change to http.patch(...)
 };
 
-// Admin Delete – DELETE {{baseUrl}}/api/categories/:idOrSlug (Token)
-export const deleteCategory = async (idOrSlug) => {
-  const { data } = await http.delete(`/api/categories/${idOrSlug}`);
+export const updateCategory = async (id, catData) => {
+  const { data } = await http.put(`admin/categories/${id}`, catData);
+  return data;
+};
+
+export const deleteCategory = async (id) => {
+  const { data } = await http.delete(`admin/categories/${id}`);
   return data;
 };

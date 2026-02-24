@@ -2,7 +2,9 @@
 import axios from "axios";
 
 const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL.endsWith("/")
+    ? import.meta.env.VITE_API_BASE_URL
+    : `${import.meta.env.VITE_API_BASE_URL}/`,
   headers: { "Content-Type": "application/json" },
 });
 

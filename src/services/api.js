@@ -1,126 +1,70 @@
-// services/api.js
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "https://ksmedical-backend.onrender.com") + "/api";
+// src/services/api.js
+import http from "../apis/http";
 
 // KYC APIs
 export const kycAPI = {
-  // Submit KYC
   submitKYC: async (kycData) => {
-    const response = await fetch(`${API_BASE_URL}/kyc/submit`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(kycData),
-    });
-    return response.json();
+    const { data } = await http.post("kyc/submit", kycData);
+    return data;
   },
-
-  // Get KYC status for a user
   getKYCStatus: async (userId) => {
-    const response = await fetch(`${API_BASE_URL}/kyc/status/${userId}`);
-    return response.json();
+    const { data } = await http.get(`kyc/status/${userId}`);
+    return data;
   },
-
-  // Get all KYC requests (Admin)
   getAllKYC: async (status = "all") => {
-    const response = await fetch(`${API_BASE_URL}/kyc/all?status=${status}`);
-    return response.json();
+    const { data } = await http.get(`kyc/all?status=${status}`);
+    return data;
   },
-
-  // Get KYC by ID
   getKYCById: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/kyc/${id}`);
-    return response.json();
+    const { data } = await http.get(`kyc/${id}`);
+    return data;
   },
-
-  // Approve KYC (Admin)
-  approveKYC: async (id, adminId) => {
-    const response = await fetch(`${API_BASE_URL}/kyc/approve/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ adminId }),
-    });
-    return response.json();
+  approveKYC: async (id) => {
+    const { data } = await http.post(`kyc/approve/${id}`);
+    return data;
   },
-
-  // Reject KYC (Admin)
-  rejectKYC: async (id, adminId, reason) => {
-    const response = await fetch(`${API_BASE_URL}/kyc/reject/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ adminId, reason }),
-    });
-    return response.json();
+  rejectKYC: async (id, reason) => {
+    const { data } = await http.post(`kyc/reject/${id}`, { reason });
+    return data;
   },
-
-  // Get KYC statistics
   getKYCStats: async () => {
-    const response = await fetch(`${API_BASE_URL}/kyc/stats`);
-    return response.json();
+    const { data } = await http.get("kyc/stats");
+    return data;
   },
 };
 
 // Withdrawal APIs
 export const withdrawalAPI = {
-  // Create withdrawal request
   createWithdrawal: async (withdrawalData) => {
-    const response = await fetch(`${API_BASE_URL}/withdrawals/create`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(withdrawalData),
-    });
-    return response.json();
+    const { data } = await http.post("withdrawals/create", withdrawalData);
+    return data;
   },
-
-  // Get user's withdrawals
   getUserWithdrawals: async (userId) => {
-    const response = await fetch(`${API_BASE_URL}/withdrawals/user/${userId}`);
-    return response.json();
+    const { data } = await http.get(`withdrawals/user/${userId}`);
+    return data;
   },
-
-  // Get all withdrawals (Admin) - Only KYC verified users
   getAllWithdrawals: async (status = "all") => {
-    const response = await fetch(`${API_BASE_URL}/withdrawals/all?status=${status}`);
-    return response.json();
+    const { data } = await http.get(`withdrawals/all?status=${status}`);
+    return data;
   },
-
-  // Get withdrawal by ID
   getWithdrawalById: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/withdrawals/${id}`);
-    return response.json();
+    const { data } = await http.get(`withdrawals/${id}`);
+    return data;
   },
-
-  // Approve withdrawal (Admin)
-  approveWithdrawal: async (id, adminId) => {
-    const response = await fetch(`${API_BASE_URL}/withdrawals/approve/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ adminId }),
-    });
-    return response.json();
+  approveWithdrawal: async (id) => {
+    const { data } = await http.post(`withdrawals/approve/${id}`);
+    return data;
   },
-
-  // Reject withdrawal (Admin)
-  rejectWithdrawal: async (id, adminId, reason) => {
-    const response = await fetch(`${API_BASE_URL}/withdrawals/reject/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ adminId, reason }),
-    });
-    return response.json();
+  rejectWithdrawal: async (id, reason) => {
+    const { data } = await http.post(`withdrawals/reject/${id}`, { reason });
+    return data;
   },
-
-  // Complete withdrawal (Admin)
-  completeWithdrawal: async (id, transactionId, transactionProof) => {
-    const response = await fetch(`${API_BASE_URL}/withdrawals/complete/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transactionId, transactionProof }),
-    });
-    return response.json();
+  completeWithdrawal: async (id, payload) => {
+    const { data } = await http.post(`withdrawals/complete/${id}`, payload);
+    return data;
   },
-
-  // Get withdrawal statistics
   getWithdrawalStats: async () => {
-    const response = await fetch(`${API_BASE_URL}/withdrawals/stats`);
-    return response.json();
+    const { data } = await http.get("withdrawals/stats");
+    return data;
   },
 };

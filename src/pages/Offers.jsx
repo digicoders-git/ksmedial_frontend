@@ -9,6 +9,7 @@ import {
   updateOffer,
   deleteOffer,
 } from "../apis/offers";
+import { listProducts } from "../apis/products"; // Added
 import {
   FaTags,
   FaPlus,
@@ -37,6 +38,7 @@ const emptyForm = {
   discountValue: "",
   minOrderAmount: "",
   maxDiscountAmount: "",
+  applicableProducts: [], // Added
   isActive: true,
 };
 
@@ -56,27 +58,27 @@ export default function Offers() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [search, setSearch] = useState("");
+  const [productList, setProductList] = useState([]); // Added
 
   // ---------- fetch ----------
-  const fetchOffers = async () => {
+  const fetchAllData = async () => {
     try {
       setLoading(true);
-      setError("");
-      const list = await listOffers();
-      setOffers(list);
-    } catch (e) {
-      setError(
-        e?.response?.data?.message ||
-          e?.message ||
-          "Failed to load offers."
-      );
+      const [offersData, productsData] = await Promise.all([
+        listOffers(),
+        listProducts()
+      ]);
+      setOffers(offersData);
+      setProductList(productsData);
+    } catch (error) {
+       setError("Failed to load data");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchOffers();
+    fetchAllData();
   }, []);
 
   const resetForm = () => {
@@ -133,6 +135,7 @@ export default function Offers() {
           : offer.maxDiscountAmount || "",
       isActive:
         typeof offer.isActive === "boolean" ? offer.isActive : true,
+      applicableProducts: offer.applicableProducts ? offer.applicableProducts.map(p => p._id || p) : [],
     });
     setError("");
     setSuccess("");
@@ -154,6 +157,7 @@ export default function Offers() {
           ? undefined
           : Number(form.maxDiscountAmount) || 0,
       description: form.description.trim(),
+      applicableProducts: form.applicableProducts,
       isActive: form.isActive,
     };
 
@@ -197,7 +201,7 @@ export default function Offers() {
       setSuccess("");
       await deleteOffer(id);
       setSuccess("Offer deleted successfully.");
-      await fetchOffers();
+      await fetchAllData();
       Swal.fire({
         icon: "success",
         title: "Deleted",
@@ -279,7 +283,7 @@ export default function Offers() {
 
       resetForm();
       setIsModalOpen(false);
-      await fetchOffers();
+      await fetchAllData();
     } catch (e) {
       const msg =
         e?.response?.data?.message ||
@@ -348,7 +352,7 @@ export default function Offers() {
           </div>
 
           <button
-            onClick={fetchOffers}
+            onClick={fetchAllData}
             className="px-3 py-2 rounded-lg border text-sm flex items-center gap-2"
             style={{
               backgroundColor: themeColors.surface,
@@ -556,6 +560,11 @@ export default function Offers() {
                         {o.maxDiscountAmount
                           ? fmtCurrency(o.maxDiscountAmount)
                           : "-"}
+                      </div>
+                      <div className="mt-1">
+                        <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                          {o.applicableProducts?.length > 0 ? `${o.applicableProducts.length} Products` : "All Products"}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-2">
@@ -875,6 +884,34 @@ export default function Offers() {
                       placeholder="500"
                     />
                   </div>
+                </div>
+                {/* Applicable Products Selection */}
+                <div>
+                  <label className="block mb-1 text-sm font-medium" style={{ color: themeColors.text }}>
+                    Applicable Products (Optional - Select multiple)
+                  </label>
+                  <div className="max-h-40 overflow-y-auto border rounded-lg p-2 bg-slate-50 space-y-1">
+                    {productList.map(p => (
+                      <label key={p._id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-slate-100 p-1 rounded transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={form.applicableProducts.includes(p._id)}
+                          onChange={(e) => {
+                            const val = p._id;
+                            const current = [...form.applicableProducts];
+                            if (e.target.checked) {
+                              setForm(prev => ({ ...prev, applicableProducts: [...current, val] }));
+                            } else {
+                              setForm(prev => ({ ...prev, applicableProducts: current.filter(id => id !== val) }));
+                            }
+                          }}
+                          className="rounded border-slate-300"
+                        />
+                        <span className="truncate">{p.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-[10px] opacity-50 mt-1">If no products are selected, the offer applies to all products.</p>
                 </div>
 
                 {/* Active */}

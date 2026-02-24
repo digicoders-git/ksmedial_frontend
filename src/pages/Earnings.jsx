@@ -3,249 +3,52 @@ import {
   FaCoins, 
   FaWallet, 
   FaHistory, 
-  FaDownload, 
-  FaCalendar, 
-  FaFilter, 
-  FaUsers, 
-  FaCheckCircle, 
-  FaUniversity, 
-  FaGift,
-  FaChartLine,
-  FaArrowUp,
-  FaArrowDown
+  FaSearch, 
+  FaSyncAlt,
+  FaChartLine
 } from "react-icons/fa";
 import { toast } from "sonner";
-import { API_ENDPOINTS, buildUrl, isValidObjectId } from "../config/api";
 import { useTheme } from "../context/ThemeContext";
-import { useAuth } from "../context/AuthContext";
-
-const StatCard = (props) => {
-  const { icon: Icon, title, value, subtitle, color, bgColor, trend, theme, themeColors } = props;
-  return (
-    <div className="rounded-xl p-6 shadow-lg border hover:shadow-xl transition-all duration-300" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
-      <div className="flex items-center justify-between mb-2">
-        <div className={`p-3 rounded-lg ${bgColor}`}>
-          <Icon className={`text-2xl ${color}`} />
-        </div>
-        {trend && (
-          <div className={`flex items-center gap-1 text-sm ${trend > 0 ? (theme === 'dark' ? 'text-red-500' : 'text-green-600') : 'text-red-600'}`}>
-            {trend > 0 ? <FaArrowUp /> : <FaArrowDown />}
-            <span>{Math.abs(trend)}%</span>
-          </div>
-        )}
-      </div>
-      <p className="text-sm font-medium" style={{ color: themeColors.textSecondary }}>{title}</p>
-      <p className="text-2xl font-bold mt-1" style={{ color: themeColors.text }}>{value}</p>
-      {subtitle && <p className="text-xs mt-1" style={{ color: themeColors.textSecondary }}>{subtitle}</p>}
-    </div>
-  );
-};
+import { getReferalDashboard } from "../apis/referal";
 
 const Earnings = () => {
-  const { theme, themeColors } = useTheme();
-  const { admin } = useAuth();
-  const [earningsData, setEarningsData] = useState({
-    totalEarnings: 0,
-    availableBalance: 0,
-    pendingEarnings: 0,
-    monthlyEarnings: 0,
-    todayEarnings: 0,
-    weeklyEarnings: 0
-  });
-  
-  const [transactions, setTransactions] = useState([]);
+  const { themeColors } = useTheme();
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("all");
+  const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch earnings data
-  useEffect(() => {
-    fetchEarningsData();
-    fetchTransactions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeFilter, dateFilter]);
-
-  const fetchEarningsData = async () => {
+  const fetchData = async () => {
     try {
-      setLoading(true);
-      // TODO: In a real app, Admin should SELECT a user to view.
-      // Since Admin ID != User ID, we use a valid Test User ID for demonstration.
-      const userId = "696201cc6b80633495c40ae0"; 
+      setRefreshing(true);
+      const adminData = JSON.parse(localStorage.getItem("admin") || "{}");
+      const userId = adminData.id || "global-admin";
       
-      // const userId = admin?.id; // This fails because Admin is not a User
-      
-      if (!userId || !isValidObjectId(userId)) {
-        setLoading(false);
-        return;
-      }
-      
-      const response = await fetch(API_ENDPOINTS.REFERAL.DASHBOARD(userId));
-      const data = await response.json();
-      
-      if (response.ok) {
-        setEarningsData({
-          totalEarnings: data.totalEarnings || 0,
-          availableBalance: data.availableBalance || 0,
-          pendingEarnings: data.pendingWithdrawal || 0,
-          monthlyEarnings: data.monthlyEarnings || 0,
-          todayEarnings: calculateTodayEarnings(data.recentTransactions || []),
-          weeklyEarnings: calculateWeeklyEarnings(data.recentTransactions || [])
-        });
-      } else {
-        toast.error(data.message || "Failed to fetch earnings data");
-      }
+      const data = await getReferalDashboard(userId);
+      setStats(data);
     } catch (error) {
-      console.error("Fetch earnings error:", error);
-      toast.error("Failed to fetch earnings data");
+      console.error("Error fetching earnings:", error);
+      toast.error("Failed to load earnings data");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const fetchTransactions = async () => {
-    try {
-      // const userId = admin?.id;
-      const userId = "696201cc6b80633495c40ae0";
-      
-      if (!userId || !isValidObjectId(userId)) {
-        return;
-      }
-      
-      const response = await fetch(
-        buildUrl(API_ENDPOINTS.REFERAL.TRANSACTIONS(userId), { type: typeFilter, limit: 100 })
-      );
-      const data = await response.json();
-      
-      if (response.ok) {
-        setTransactions(data.transactions || []);
-      } else {
-        toast.error(data.message || "Failed to fetch transactions");
-      }
-    } catch (error) {
-      console.error("Fetch transactions error:", error);
-      toast.error("Failed to fetch transactions");
-    }
-  };
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const calculateTodayEarnings = (transactions) => {
-    const today = new Date().toDateString();
-    return transactions
-      .filter(t => new Date(t.date).toDateString() === today && t.amount > 0)
-      .reduce((sum, t) => sum + t.amount, 0);
-  };
-
-  const calculateWeeklyEarnings = (transactions) => {
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    return transactions
-      .filter(t => new Date(t.date) >= weekAgo && t.amount > 0)
-      .reduce((sum, t) => sum + t.amount, 0);
-  };
-
-  const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    let matchesDate = true;
-    if (dateFilter !== "all") {
-      const transactionDate = new Date(transaction.date);
-      const now = new Date();
-      
-      switch(dateFilter) {
-        case "today":
-          matchesDate = transactionDate.toDateString() === now.toDateString();
-          break;
-        case "week": {
-          const weekAgo = new Date();
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          matchesDate = transactionDate >= weekAgo;
-          break;
-        }
-        case "month":
-          matchesDate = transactionDate.getMonth() === now.getMonth() && 
-                       transactionDate.getFullYear() === now.getFullYear();
-          break;
-        default:
-          matchesDate = true;
-      }
-    }
-    
-    return matchesSearch && matchesDate;
-  });
-
-  const exportToCSV = () => {
-    const headers = ["Date", "Type", "Description", "Amount", "Status"];
-    const csvData = filteredTransactions.map(t => [
-      new Date(t.date).toLocaleDateString(),
-      t.type,
-      t.description,
-      t.amount,
-      t.status || "completed"
-    ]);
-    
-    const csvContent = [
-      headers.join(","),
-      ...csvData.map(row => row.join(","))
-    ].join("\n");
-    
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `earnings_${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    
-    toast.success("Transactions exported successfully!");
-  };
-
-  const getTransactionIcon = (type) => {
-    switch(type) {
-      case "referral": return <FaUsers className="text-blue-600" />;
-      case "commission": return <FaCoins className={theme === 'dark' ? "text-red-500" : "text-green-600"} />;
-      case "task": return <FaCheckCircle className="text-purple-600" />;
-      case "withdrawal": return <FaUniversity className="text-red-500" />;
-      case "bonus": return <FaGift className="text-orange-500" />;
-      default: return <FaCoins style={{ color: themeColors.textSecondary }} />;
-    }
-  };
-
-  const getTransactionColor = (amount) => {
-    if (amount > 0) {
-      return theme === 'dark' ? "text-red-500" : "text-green-600";
-    }
-    return theme === 'dark' ? "text-red-400" : "text-red-600";
-  };
-
-  const getStatusColor = (status) => {
-    switch(status) {
-      case "completed": return theme === 'dark' ? "bg-red-900/30 text-red-400" : "bg-green-100 text-green-800";
-      case "pending": return "bg-yellow-100 text-yellow-800";
-      case "failed": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
-
+  const filteredTransactions = (stats?.recentTransactions || []).filter(t => 
+    t.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) {
     return (
       <div className="min-h-screen p-6" style={{ backgroundColor: themeColors.background }}>
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: themeColors.primary }}></div>
-            <span className="ml-3" style={{ color: themeColors.textSecondary }}>Loading earnings data...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Check for admin/user login - For now just show the component since we use test ID
-  if (!admin?.id && false) { // Disabled check for demo
-    return (
-       <div className="min-h-screen p-6 flex items-center justify-center" style={{ backgroundColor: themeColors.background }}>
-        <div className="p-8 rounded-xl shadow-lg text-center max-w-md" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
-          <h2 className="text-xl font-bold mb-2" style={{ color: themeColors.text }}>Please Log In</h2>
+        <div className="max-w-7xl mx-auto flex flex-col justify-center items-center py-20 gap-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+          <p className="text-xs font-bold uppercase tracking-widest opacity-50" style={{ color: themeColors.text }}>Analyzing Wallet...</p>
         </div>
       </div>
     );
@@ -254,263 +57,120 @@ const Earnings = () => {
   return (
     <div className="min-h-screen p-6" style={{ backgroundColor: themeColors.background }}>
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: themeColors.text }}>My Earnings</h1>
-          <p style={{ color: themeColors.textSecondary }}>Track your income and transaction history</p>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <StatCard
-            icon={FaCoins}
-            title="Total Earnings"
-            value={`₹${earningsData.totalEarnings.toLocaleString()}`}
-            subtitle="All-time earnings"
-            color={theme === 'dark' ? 'text-red-500' : 'text-blue-600'}
-            bgColor={theme === 'dark' ? 'bg-red-500/20' : 'bg-blue-100'}
-            trend={12}
-            theme={theme}
-            themeColors={themeColors}
-          />
-          <StatCard
-            icon={FaWallet}
-            title="Available Balance"
-            value={`₹${earningsData.availableBalance.toLocaleString()}`}
-            subtitle="Ready to withdraw"
-            color={theme === 'dark' ? 'text-red-500' : 'text-green-600'}
-            bgColor={theme === 'dark' ? 'bg-red-500/20' : 'bg-green-100'}
-            theme={theme}
-            themeColors={themeColors}
-          />
-          <StatCard
-            icon={FaHistory}
-            title="Pending Earnings"
-            value={`₹${earningsData.pendingEarnings.toLocaleString()}`}
-            subtitle="In process"
-            color="text-orange-500"
-            bgColor="bg-orange-100"
-            theme={theme}
-            themeColors={themeColors}
-          />
-          <StatCard
-            icon={FaCalendar}
-            title="Monthly Earnings"
-            value={`₹${earningsData.monthlyEarnings.toLocaleString()}`}
-            subtitle="This month"
-            color="text-purple-500"
-            bgColor="bg-purple-100"
-            trend={8}
-            theme={theme}
-            themeColors={themeColors}
-          />
-          <StatCard
-            icon={FaChartLine}
-            title="Weekly Earnings"
-            value={`₹${earningsData.weeklyEarnings.toLocaleString()}`}
-            subtitle="Last 7 days"
-            color="text-indigo-500"
-            bgColor="bg-indigo-100"
-            trend={15}
-            theme={theme}
-            themeColors={themeColors}
-          />
-          <StatCard
-            icon={FaCheckCircle}
-            title="Today's Earnings"
-            value={`₹${earningsData.todayEarnings.toLocaleString()}`}
-            subtitle="Today"
-            color="text-teal-500"
-            bgColor="bg-teal-100"
-            theme={theme}
-            themeColors={themeColors}
-          />
-        </div>
-
-        {/* Filters and Export */}
-        <div className="rounded-xl p-6 shadow-lg mb-8 border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-              <input
-                type="text"
-                placeholder="Search transactions..."
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50"
-                style={{ backgroundColor: themeColors.background, borderColor: themeColors.border, color: themeColors.text }}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <select
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50"
-                style={{ backgroundColor: themeColors.background, borderColor: themeColors.border, color: themeColors.text }}
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-              >
-                <option value="all" style={{ backgroundColor: themeColors.surface }}>All Types</option>
-                <option value="referral" style={{ backgroundColor: themeColors.surface }}>Referral</option>
-                <option value="commission" style={{ backgroundColor: themeColors.surface }}>Commission</option>
-                <option value="task" style={{ backgroundColor: themeColors.surface }}>Task</option>
-                <option value="bonus" style={{ backgroundColor: themeColors.surface }}>Bonus</option>
-                <option value="withdrawal" style={{ backgroundColor: themeColors.surface }}>Withdrawal</option>
-              </select>
-              <select
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50"
-                style={{ backgroundColor: themeColors.background, borderColor: themeColors.border, color: themeColors.text }}
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-              >
-                <option value="all" style={{ backgroundColor: themeColors.surface }}>All Time</option>
-                <option value="today" style={{ backgroundColor: themeColors.surface }}>Today</option>
-                <option value="week" style={{ backgroundColor: themeColors.surface }}>This Week</option>
-                <option value="month" style={{ backgroundColor: themeColors.surface }}>This Month</option>
-              </select>
-            </div>
-            <button
-              onClick={exportToCSV}
-              className="flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition-all font-medium"
-              style={{ backgroundColor: themeColors.primary }}
-            >
-              <FaDownload /> Export CSV
-            </button>
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Earnings & Commissions</h1>
+            <p className="text-sm font-medium text-slate-500">Overview of your multi-level marketing revenue and balance.</p>
           </div>
+          <button 
+            onClick={fetchData}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs uppercase transition-all hover:bg-slate-700 active:scale-95 disabled:opacity-50 shadow-lg"
+          >
+            <FaSyncAlt className={refreshing ? "animate-spin" : ""} /> {refreshing ? "Syncing..." : "Refresh Stats"}
+          </button>
         </div>
 
-        {/* Transactions Table */}
-        <div className="rounded-xl shadow-lg overflow-hidden border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
-          <div className="px-6 py-4 border-b" style={{ borderColor: themeColors.border }}>
-            <h2 className="text-xl font-semibold" style={{ color: themeColors.text }}>Transaction History</h2>
-            <p className="text-sm" style={{ color: themeColors.textSecondary }}>
-              Showing {filteredTransactions.length} of {transactions.length} transactions
-            </p>
+        {/* Stats Grid - Simple & Clean */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {[
+                { label: "Life Time Earnings", val: stats?.totalEarnings, icon: FaCoins, color: "text-blue-600", bgColor: "bg-blue-50", trend: "Accumulated Revenue" },
+                { label: "Available Balance", val: stats?.availableBalance, icon: FaWallet, color: "text-emerald-600", bgColor: "bg-emerald-50", trend: "Current Wallet" },
+                { label: "Monthly Bonus", val: stats?.monthlyEarnings, icon: FaChartLine, color: "text-orange-600", bgColor: "bg-orange-50", trend: "Current Month" }
+            ].map((card, i) => (
+                <div key={i} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{card.label}</p>
+                            <h3 className="text-2xl font-black text-slate-800 tracking-tight">
+                                ₹{(card.val || 0).toLocaleString()}
+                            </h3>
+                        </div>
+                        <div className={`p-3 rounded-xl ${card.bgColor}`}>
+                            <card.icon className={`text-xl ${card.color}`} />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{card.trend}</span>
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        {/* Transaction Logs Table */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+                <FaHistory className="text-slate-400" />
+                <h2 className="text-sm font-black uppercase text-slate-700 tracking-wider">Transaction History</h2>
+            </div>
+            <div className="relative w-full md:w-80">
+                <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                <input
+                    type="text"
+                    placeholder="Filter logs..."
+                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-xs font-medium"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
           </div>
           
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead style={{ backgroundColor: themeColors.background }}>
-                <tr>
-                  {[
-                    "Type",
-                    "Description",
-                    "Date",
-                    "Amount",
-                    "Status"
-                  ].map((header) => (
-                    <th key={header} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: themeColors.textSecondary }}>
-                      {header}
-                    </th>
-                  ))}
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-left">
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Type & Description</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Processing Date</th>
+                    <th className="px-6 py-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount Credit</th>
                 </tr>
               </thead>
-              <tbody className="divide-y" style={{ borderColor: themeColors.border }}>
-                {filteredTransactions.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="px-6 py-12 text-center">
-                      <FaHistory className="mx-auto text-4xl text-gray-400 mb-4" />
-                      <p className="text-gray-500">No transactions found</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredTransactions.map((transaction) => (
-                    <tr key={transaction.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg" style={{ backgroundColor: themeColors.background }}>
-                            {getTransactionIcon(transaction.type)}
-                          </div>
-                          <span className="text-sm font-medium capitalize" style={{ color: themeColors.text }}>
-                            {transaction.type}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm" style={{ color: themeColors.text }}>{transaction.description}</div>
-                        {transaction.relatedUser && (
-                          <div className="text-xs" style={{ color: themeColors.textSecondary }}>Related: {transaction.relatedUser}</div>
-                        )}
-                        {transaction.level && (
-                          <div className="text-xs" style={{ color: themeColors.textSecondary }}>Level {transaction.level}</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: themeColors.text }}>
-                        {new Date(transaction.date).toLocaleDateString()}
-                        <div className="text-xs" style={{ color: themeColors.textSecondary }}>
-                          {new Date(transaction.date).toLocaleTimeString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`text-lg font-bold ${getTransactionColor(transaction.amount)}`}>
-                          {transaction.amount > 0 ? "+" : ""}₹{Math.abs(transaction.amount).toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(transaction.status || "completed")}`}>
-                          {transaction.status || "Completed"}
-                        </span>
-                      </td>
+              <tbody className="divide-y divide-slate-100">
+                {!filteredTransactions.length ? (
+                    <tr>
+                        <td colSpan="3" className="px-6 py-20 text-center">
+                            <div className="flex flex-col items-center gap-3 opacity-20">
+                                <FaHistory size={40} />
+                                <p className="font-black uppercase tracking-widest text-xs">No Records Found</p>
+                            </div>
+                        </td>
                     </tr>
-                  ))
+                ) : (
+                    filteredTransactions.map((t) => (
+                    <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                            <div className="font-black text-[12px] text-slate-800 uppercase tracking-tight">{t.description}</div>
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                <span className="text-[10px] font-bold text-emerald-600 uppercase">Commission Credited</span>
+                            </div>
+                        </td>
+                        <td className="px-6 py-4">
+                            <div className="text-[11px] font-bold text-slate-500">
+                                {new Date(t.date).toLocaleDateString('en-IN', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric'
+                                })}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-medium">
+                                {new Date(t.date).toLocaleTimeString('en-IN', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                            <span className="text-sm font-black text-emerald-600 tracking-tight">
+                                +₹{t.amount?.toLocaleString()}
+                            </span>
+                        </td>
+                    </tr>
+                    ))
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Summary Section */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="rounded-xl p-6 shadow-lg border" style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border }}>
-            <h3 className="text-lg font-semibold mb-4" style={{ color: themeColors.text }}>Earnings Breakdown</h3>
-            <div className="space-y-3">
-              {["referral", "commission", "task", "bonus"].map(type => {
-                const typeEarnings = transactions
-                  .filter(t => t.type === type && t.amount > 0)
-                  .reduce((sum, t) => sum + t.amount, 0);
-                const percentage = earningsData.totalEarnings > 0 
-                  ? ((typeEarnings / earningsData.totalEarnings) * 100).toFixed(1)
-                  : 0;
-                
-                return (
-                  <div key={type} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {getTransactionIcon(type)}
-                      <span className="text-sm font-medium text-gray-700 capitalize">{type}</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-gray-900">₹{typeEarnings.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">{percentage}%</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-lg">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Stats</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Transactions</span>
-                <span className="text-sm font-bold text-gray-900">{transactions.length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Average Transaction</span>
-                <span className="text-sm font-bold text-gray-900">
-                  ₹{transactions.length > 0 
-                    ? (transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0) / transactions.length).toFixed(0)
-                    : 0}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Highest Earning</span>
-                <span className="text-sm font-bold text-green-600">
-                  ₹{transactions.length > 0 
-                    ? Math.max(...transactions.filter(t => t.amount > 0).map(t => t.amount)).toLocaleString()
-                    : 0}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">This Month Growth</span>
-                <span className="text-sm font-bold text-blue-600">+12%</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
