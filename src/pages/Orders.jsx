@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 import { useFont } from "../context/FontContext";
-import { useAuth } from "../context/AuthContext";
 import { listOrders, updateOrderStatus } from "../apis/orders";
 import {
   FaShoppingCart,
@@ -18,7 +17,6 @@ import {
   FaInfoCircle
 } from "react-icons/fa";
 import { toast } from "sonner";
-import Swal from "sweetalert2";
 
 const fmtDateTime = (iso) =>
   iso
@@ -42,20 +40,21 @@ const STATUS_OPTIONS = [
 export default function Orders() {
   const { themeColors } = useTheme();
   const { currentFont } = useFont();
-  const { isLoggedIn } = useAuth();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const fetchOrders = async () => {
     try {
       setRefreshing(true);
       const list = await listOrders();
       setOrders(Array.isArray(list) ? list : list.orders || []);
-    } catch {
+    } catch (error) {
+      console.error("Order fetch error:", error);
       toast.error("Failed to load ecosystem orders");
     } finally {
       setLoading(false);
@@ -71,8 +70,12 @@ export default function Orders() {
     try {
       await updateOrderStatus(orderId, updateData);
       setOrders(prev => prev.map(o => (o._id || o.id) === orderId ? { ...o, ...updateData } : o));
+      if (selectedOrder && (selectedOrder._id === orderId || selectedOrder.id === orderId)) {
+          setSelectedOrder(prev => ({ ...prev, ...updateData }));
+      }
       toast.success("Order metrics synchronized");
-    } catch {
+    } catch (error) {
+      console.error("Order update error:", error);
       toast.error("Inbound update failed");
     }
   };
@@ -185,14 +188,14 @@ export default function Orders() {
                             filteredOrders.map(o => {
                                 const config = getStatusConfig(o.status);
                                 return (
-                                    <tr key={o._id} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-6 py-4">
+                                    <tr key={o._id || o.id} className="hover:bg-slate-50/50 transition-colors group">
+                                        <td className="px-6 py-4 cursor-pointer" onClick={() => setSelectedOrder(o)}>
                                             <div className="flex items-center gap-3">
                                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${config.bg} ${config.text} border ${config.border} shadow-sm`}>
                                                     <FaShoppingCart size={14} />
                                                 </div>
                                                 <div>
-                                                    <div className="text-xs font-black text-slate-800 uppercase tracking-tighter">#{o.orderNumber || o._id.slice(-6).toUpperCase()}</div>
+                                                    <div className="text-xs font-black text-slate-800 uppercase tracking-tighter">#{o.orderNumber || (o._id || o.id || "").slice(-6).toUpperCase()}</div>
                                                     <div className="text-[9px] font-bold text-blue-500 uppercase mt-0.5">{o.shopId?.shopName ? `Vendor: ${o.shopId.shopName}` : "Unallocated"}</div>
                                                     <div className="text-[9px] font-medium text-slate-400 uppercase mt-0.5">{fmtDateTime(o.createdAt)}</div>
                                                 </div>
@@ -210,20 +213,28 @@ export default function Orders() {
                                         <td className="px-6 py-4 text-center">
                                             <div className="inline-flex flex-col items-center">
                                                 <select 
-                                                    value={o.status} 
-                                                    onChange={e => handleUpdate(o._id, { status: e.target.value })}
+                                                    value={o.status || 'pending'} 
+                                                    onChange={e => handleUpdate(o._id || o.id, { status: e.target.value })}
                                                     className={`px-3 py-1.5 rounded-lg border ${config.bg} ${config.text} ${config.border} text-[9px] font-black uppercase tracking-widest focus:outline-none cursor-pointer hover:shadow-md transition-all`}
                                                 >
                                                     {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                                 </select>
-                                                <div className={`mt-1 flex items-center gap-1 text-[8px] font-bold ${o.paymentStatus === 'paid' ? 'text-emerald-500' : 'text-slate-400'}`}>
-                                                    <FaInfoCircle size={8} /> {o.paymentMethod} • {o.paymentStatus?.toUpperCase()}
+                                                <div 
+                                                    onClick={() => handleUpdate(o._id || o.id, { paymentStatus: o.paymentStatus === 'paid' ? 'pending' : 'paid' })}
+                                                    className={`mt-1 flex items-center gap-1 text-[8px] font-bold cursor-pointer hover:opacity-75 ${o.paymentStatus === 'paid' ? 'text-emerald-500' : 'text-slate-400'}`}
+                                                >
+                                                    <FaInfoCircle size={8} /> {o.paymentMethod || 'COD'} • {o.paymentStatus?.toUpperCase() || 'PENDING'}
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="text-xs font-black text-slate-800 tracking-tighter">{fmtCurrency(o.total)}</div>
-                                            <div className="text-[9px] font-bold text-slate-300 uppercase tracking-wider line-clamp-1">{o.items?.length} Items Captured</div>
+                                            <button 
+                                                onClick={() => setSelectedOrder(o)}
+                                                className="text-[9px] font-bold text-blue-500 uppercase tracking-wider hover:underline"
+                                            >
+                                                {o.items?.length || 0} Items Captured
+                                            </button>
                                         </td>
                                     </tr>
                                 );
@@ -233,6 +244,92 @@ export default function Orders() {
                 </table>
             </div>
         </div>
+
+        {/* View Details Modal */}
+        {selectedOrder && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-6 over scroll-y-auto">
+                <div className="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-200 animate-in zoom-in duration-300 my-auto">
+                    <div className="flex justify-between items-center p-8 border-b border-slate-50">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter">Order #{selectedOrder.orderNumber || (selectedOrder._id || selectedOrder.id || "").slice(-6).toUpperCase()}</h3>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Transaction Logistics Summary</p>
+                        </div>
+                        <button onClick={() => setSelectedOrder(null)} className="w-10 h-10 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center transition-all">
+                            <FaTimesCircle className="text-slate-400" />
+                        </button>
+                    </div>
+
+                    <div className="p-8 max-h-[60vh] overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-8 mb-8">
+                            <div>
+                                <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Shipping Matrix</h4>
+                                <div className="space-y-1 font-bold text-xs text-slate-800 uppercase tracking-tight">
+                                    <p>{selectedOrder.shippingAddress?.name}</p>
+                                    <p className="font-medium text-slate-500 normal-case">{selectedOrder.shippingAddress?.addressLine1}</p>
+                                    <p className="font-medium text-slate-500 text-[10px]">{selectedOrder.shippingAddress?.city}, {selectedOrder.shippingAddress?.state} - {selectedOrder.shippingAddress?.pincode}</p>
+                                    <p className="text-blue-500">{selectedOrder.shippingAddress?.phone}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Payment & Status</h4>
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${getStatusConfig(selectedOrder.status).bg} ${getStatusConfig(selectedOrder.status).text}`}>
+                                            {selectedOrder.status}
+                                        </div>
+                                        <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${selectedOrder.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-500' : 'bg-slate-50 text-slate-400'}`}>
+                                            {selectedOrder.paymentStatus}
+                                        </div>
+                                    </div>
+                                    <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                                        Method: {selectedOrder.paymentMethod || 'COD'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mb-8">
+                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Captured Manifest</h4>
+                            <div className="space-y-2">
+                                {selectedOrder.items?.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <div>
+                                            <div className="text-xs font-black text-slate-800 uppercase tracking-tight">{item.productName}</div>
+                                            <div className="text-[9px] font-bold text-slate-400 flex items-center gap-2 uppercase mt-1">
+                                                Qty: {item.quantity} {item.size && `• Size: ${item.size}`} {item.color && `• Color: ${item.color}`}
+                                            </div>
+                                        </div>
+                                        <div className="text-xs font-black text-slate-800 tracking-tighter">
+                                            {fmtCurrency(item.productPrice * item.quantity)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {selectedOrder.notes && (
+                            <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 mb-8">
+                                <h4 className="text-[9px] font-black uppercase text-blue-400 tracking-widest mb-1">Inbound Notes</h4>
+                                <p className="text-xs font-medium text-blue-600">{selectedOrder.notes}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Grand Total Balance</span>
+                            <span className="text-2xl font-black text-slate-800 tracking-tighter">{fmtCurrency(selectedOrder.total)}</span>
+                        </div>
+                        <button 
+                            onClick={() => setSelectedOrder(null)}
+                            className="px-8 py-3 bg-slate-800 text-white rounded-2xl font-black uppercase text-xs hover:bg-slate-700 transition-all shadow-lg"
+                        >
+                            Sync & Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
       </div>
     </div>
   );

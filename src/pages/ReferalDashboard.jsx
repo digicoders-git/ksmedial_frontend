@@ -3,6 +3,7 @@ import { FaUsers, FaCoins, FaWallet, FaChartLine, FaCopy, FaSyncAlt } from "reac
 import { toast } from "sonner";
 import { useTheme } from "../context/ThemeContext";
 import { getReferalDashboard } from "../apis/referal";
+import http from "../apis/http";
 
 const ReferalStatCard = (props) => {
   const { icon: CardIcon, title, value, color, bgColor, themeColors } = props;
@@ -30,9 +31,9 @@ const ReferalDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setRefreshing(true);
-      // Using 'global-admin' for Admin view, or it could pull from storage
-      const adminData = JSON.parse(localStorage.getItem("admin") || "{}");
-      const userId = adminData.id || "global-admin";
+      console.log('MLM Debug - BaseURL:', http.defaults.baseURL);
+      const userId = "global-admin";
+      console.log('MLM Debug - Fetching dashboard for:', userId);
       
       const data = await getReferalDashboard(userId);
       setReferalData(data);

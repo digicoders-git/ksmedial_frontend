@@ -79,7 +79,8 @@ export default function Blogs() {
       setLoading(true);
       setError("");
       const res = await getAllBlogs(page, 10);
-      setBlogs(res.blogs || []);
+      const blogList = Array.isArray(res) ? res : (res.blogs || []);
+      setBlogs(blogList);
       setCurrentPage(res.currentPage || 1);
       setTotalPages(res.totalPages || 1);
     } catch (e) {
@@ -334,29 +335,27 @@ export default function Blogs() {
         .map((keyword) => keyword.trim())
         .filter((keyword) => keyword.length);
 
-      const blogData = {
-        title: form.title.trim(),
-        shortDescription: form.shortDescription.trim(),
-        content: editorContent.trim(),
-        thumbnailImage: form.thumbnailImage.trim(),
-        coverImage: form.coverImage.trim(),
-        category: form.category.trim(),
-        tags: cleanTags,
-        metaTitle: form.metaTitle.trim(),
-        metaDescription: form.metaDescription.trim(),
-        metaKeywords: cleanKeywords,
-        isPublished: form.isPublished,
-        isFeatured: form.isFeatured,
-      };
+      const blogData = new FormData();
+      blogData.append("title", form.title.trim());
+      blogData.append("shortDescription", form.shortDescription.trim());
+      blogData.append("content", editorContent.trim());
+      blogData.append("category", form.category.trim());
+      blogData.append("isPublished", form.isPublished);
+      blogData.append("isFeatured", form.isFeatured);
+      blogData.append("metaTitle", form.metaTitle.trim());
+      blogData.append("metaDescription", form.metaDescription.trim());
+      
+      cleanTags.forEach(tag => blogData.append("tags[]", tag));
+      cleanKeywords.forEach(kw => blogData.append("metaKeywords[]", kw));
 
-      // Remove empty string fields
-      Object.keys(blogData).forEach(key => {
-        if (blogData[key] === '') {
-          delete blogData[key];
-        }
-      });
+      if (form.thumbnailImage instanceof File) {
+        blogData.append("thumbnailImage", form.thumbnailImage);
+      }
+      if (form.coverImage instanceof File) {
+        blogData.append("coverImage", form.coverImage);
+      }
 
-      console.log('Blog data being sent:', blogData); // Debug log
+      console.log('Blog data being sent (FormData check):', form.title); 
 
       if (editing) {
         // Use ObjectId (_id) for update operations
@@ -576,7 +575,11 @@ export default function Blogs() {
                 {/* Image */}
                 <div className="relative">
                   <img
-                    src={blog.thumbnailImage || blog.coverImage || ""}
+                    src={
+                      (blog.thumbnailImage || blog.coverImage || "").startsWith("http")
+                        ? (blog.thumbnailImage || blog.coverImage)
+                        : `${import.meta.env.VITE_API_URL.replace("/api", "")}${blog.thumbnailImage || blog.coverImage || ""}`
+                    }
                     alt={blog.title}
                     className="w-full h-40 object-cover"
                   />
@@ -936,21 +939,20 @@ export default function Blogs() {
                     className="block mb-1 text-sm font-medium"
                     style={{ color: themeColors.text }}
                   >
-                    Thumbnail Image URL
+                    Thumbnail Image
                   </label>
                   <input
                     id="thumbnailImage"
                     name="thumbnailImage"
-                    type="url"
-                    value={form.thumbnailImage}
-                    onChange={handleChange}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setForm({...form, thumbnailImage: e.target.files[0]})}
                     className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
                     style={{
                       backgroundColor: themeColors.background,
                       borderColor: themeColors.border,
                       color: themeColors.text,
                     }}
-                    placeholder="https://example.com/thumb.jpg"
                   />
                 </div>
 
@@ -961,21 +963,20 @@ export default function Blogs() {
                     className="block mb-1 text-sm font-medium"
                     style={{ color: themeColors.text }}
                   >
-                    Cover Image URL
+                    Cover Image
                   </label>
                   <input
                     id="coverImage"
                     name="coverImage"
-                    type="url"
-                    value={form.coverImage}
-                    onChange={handleChange}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setForm({...form, coverImage: e.target.files[0]})}
                     className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
                     style={{
                       backgroundColor: themeColors.background,
                       borderColor: themeColors.border,
                       color: themeColors.text,
                     }}
-                    placeholder="https://example.com/cover.jpg"
                   />
                 </div>
 
@@ -1282,7 +1283,11 @@ export default function Blogs() {
                         Cover Image
                       </p>
                       <img
-                        src={viewBlog.coverImage}
+                        src={
+                          (viewBlog.coverImage || "").startsWith("http")
+                            ? viewBlog.coverImage
+                            : `${import.meta.env.VITE_API_URL.replace("/api", "")}${viewBlog.coverImage}`
+                        }
                         alt={viewBlog.title}
                         className="w-full h-40 object-cover rounded-lg border"
                         style={{ borderColor: themeColors.border }}
@@ -1298,7 +1303,11 @@ export default function Blogs() {
                         Thumbnail
                       </p>
                       <img
-                        src={viewBlog.thumbnailImage}
+                        src={
+                          (viewBlog.thumbnailImage || "").startsWith("http")
+                            ? viewBlog.thumbnailImage
+                            : `${import.meta.env.VITE_API_URL.replace("/api", "")}${viewBlog.thumbnailImage}`
+                        }
                         alt={viewBlog.title}
                         className="w-32 h-20 object-cover rounded-lg border"
                         style={{ borderColor: themeColors.border }}

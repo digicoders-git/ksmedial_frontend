@@ -176,7 +176,7 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start writing..." }) =
         suppressContentEditableWarning={true}
       />
 
-      <style jsx>{`
+      <style>{`
         [contenteditable]:empty:before {
           content: attr(data-placeholder);
           color: ${themeColors.text}60;

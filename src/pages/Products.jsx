@@ -19,7 +19,8 @@ import {
   listProducts, 
   createProduct, 
   updateProduct, 
-  deleteProduct 
+  deleteProduct,
+  bulkUploadProduct
 } from "../apis/products";
 import { getCategories } from "../apis/categories";
 import { listOffers } from "../apis/offers"; // Added
@@ -62,7 +63,7 @@ export default function Products() {
   const fetchProducts = async () => {
     try {
       setRefreshing(true);
-      const res = await listProducts();
+      const res = await listProducts({ scope: "global" });
       const list = Array.isArray(res) ? res : res.products || [];
       setProducts(list);
     } catch {
@@ -164,12 +165,17 @@ export default function Products() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const fd = new FormData();
-    Object.keys(formData).forEach(key => fd.append(key, formData[key]));
-    if (mainImage) fd.append("mainImage", mainImage);
-    galleryImages.forEach(img => fd.append("galleryImages", img));
-
     try {
+      // Clean empty strings for database IDs to avoid CastErrors
+      const submitData = { ...formData };
+      if (submitData.categoryId === "") delete submitData.categoryId;
+      if (submitData.offerId === "") delete submitData.offerId;
+
+      const fd = new FormData();
+      Object.keys(submitData).forEach(key => fd.append(key, submitData[key]));
+      if (mainImage) fd.append("mainImage", mainImage);
+      galleryImages.forEach(img => fd.append("galleryImages", img));
+
       if (editingProduct) {
         await updateProduct(editingProduct._id || editingProduct.id, fd);
         toast.success("Catalog updated");
@@ -179,8 +185,9 @@ export default function Products() {
       }
       setShowModal(false);
       fetchProducts();
-    } catch {
-      toast.error("Operation failed");
+    } catch (error) {
+      console.error("Product submission error:", error);
+      toast.error(error.response?.data?.message || "Operation failed");
     }
   };
 
@@ -204,6 +211,30 @@ export default function Products() {
         }
       }
     });
+  };
+
+  const handleBulkUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fd = new FormData();
+    fd.append("file", file);
+
+    try {
+      setRefreshing(true);
+      await bulkUploadProduct(fd);
+      toast.success("Bulk products uploaded successfully");
+      fetchProducts();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Bulk upload failed");
+    } finally {
+      setRefreshing(false);
+      e.target.value = null;
+    }
+  };
+
+  const downloadSample = () => {
+    window.open(`${import.meta.env.VITE_API_BASE_URL}/admin/products/sample`, "_blank");
   };
 
   const filteredProducts = useMemo(() => {
@@ -233,7 +264,26 @@ export default function Products() {
             <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">App Product Master</h1>
             <p className="text-sm font-medium text-slate-500">Manage products displayed on your user application and website.</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+             <input 
+              type="file" 
+              id="csvUpload" 
+              className="hidden" 
+              accept=".csv"
+              onChange={handleBulkUpload}
+            />
+            <button 
+              onClick={() => document.getElementById("csvUpload").click()}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 font-bold text-xs uppercase transition-all hover:bg-blue-100"
+            >
+              Bulk Add (CSV)
+            </button>
+            <button 
+              onClick={downloadSample}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 font-bold text-xs uppercase transition-all hover:bg-slate-100"
+            >
+              Sample CSV
+            </button>
             <button 
               onClick={fetchProducts}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold text-xs uppercase transition-all hover:bg-slate-50"
@@ -280,6 +330,7 @@ export default function Products() {
                   <tr className="bg-slate-50 border-b border-slate-200">
                       <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Product Details</th>
                       <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Pricing</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Active Offer</th>
                       <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Stock</th>
                       <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
                       <th className="px-6 py-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">Actions</th>
@@ -288,7 +339,7 @@ export default function Products() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredProducts.length === 0 ? (
                       <tr>
-                          <td colSpan="5" className="px-6 py-20 text-center text-slate-300 uppercase text-[10px] font-bold tracking-widest">
+                       <td colSpan="6" className="px-6 py-20 text-center text-slate-300 uppercase text-[10px] font-bold tracking-widest">
                             No products found in catalog
                           </td>
                       </tr>
@@ -312,16 +363,22 @@ export default function Products() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm font-bold text-slate-800">₹{p.sellingPrice?.toLocaleString()}</div>
-                          <div className="flex items-center gap-2">
-                            {p.mrp > p.sellingPrice && (
-                              <span className="text-[10px] text-slate-300 line-through">₹{p.mrp?.toLocaleString()}</span>
+                          {p.mrp > p.sellingPrice && (
+                            <span className="text-[10px] text-slate-300 line-through">₹{p.mrp?.toLocaleString()}</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                            {p.offerId ? (
+                                <div className="space-y-1">
+                                    <div className="text-[11px] font-black text-blue-600 uppercase tracking-tight">{p.offerId.title}</div>
+                                    <div className="text-[9px] font-bold text-slate-400 flex items-center gap-1 uppercase">
+                                        <span className="bg-blue-100/50 text-blue-600 px-1 rounded">{p.offerId.code}</span>
+                                        {p.offerId.discountType === 'percentage' ? `${p.offerId.discountValue}% OFF` : `₹${p.offerId.discountValue} FLAT`}
+                                    </div>
+                                </div>
+                            ) : (
+                                <span className="text-[10px] font-bold text-slate-300 uppercase italic opacity-40">No Offer</span>
                             )}
-                            {p.offerId?.title && (
-                              <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-500 text-[8px] font-black uppercase tracking-tight">
-                                {p.offerId.title}
-                              </span>
-                            )}
-                          </div>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="text-xs font-bold text-slate-700">{p.stock || 0} {p.unit}</div>
@@ -375,12 +432,14 @@ export default function Products() {
                               <div className="text-lg font-black text-slate-900 tracking-tight">₹{p.sellingPrice?.toLocaleString()}</div>
                               <div className="flex items-center gap-2">
                                   <span className="text-[10px] font-bold text-slate-300 line-through tracking-wider">₹{p.mrp?.toLocaleString()}</span>
-                                  {p.offerId?.title && (
-                                      <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-500 text-[8px] font-black uppercase tracking-tight">
-                                          {p.offerId.title}
-                                      </span>
-                                  )}
                               </div>
+                              {p.offerId?.title && (
+                                <div className="mt-2">
+                                  <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[8px] font-black uppercase tracking-tight border border-blue-100">
+                                      {p.offerId.title} • {p.offerId.code}
+                                  </span>
+                                </div>
+                              )}
                           </div>
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
                             <button onClick={() => setViewProduct(p)} className="p-2.5 bg-slate-100 text-slate-800 rounded-xl hover:bg-white shadow-sm">

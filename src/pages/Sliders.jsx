@@ -272,6 +272,11 @@ export default function Sliders() {
       return;
     }
 
+    if (!editing && !imageFile) {
+      setError("Slider image is required for new sliders.");
+      return;
+    }
+
     try {
       setSaving(true);
       setError("");
@@ -552,9 +557,13 @@ export default function Sliders() {
                   <tr key={s._id || s.id}>
                     {/* Image */}
                     <td className="px-4 py-2">
-                      {s.image?.url ? (
+                      {s.image?.url || typeof s.image === 'string' ? (
                         <img
-                          src={s.image.url}
+                          src={
+                            (s.image?.url || s.image).startsWith('http') 
+                              ? (s.image?.url || s.image) 
+                              : `${import.meta.env.VITE_API_URL.replace('/api', '')}${s.image?.url || s.image}`
+                          }
                           alt={s.title}
                           className="h-16 w-32 object-cover rounded-lg border"
                           style={{ borderColor: themeColors.border }}
@@ -939,6 +948,7 @@ export default function Sliders() {
                       accept="image/*"
                       onChange={handleImageChange}
                       className="hidden"
+                      required={!editing}
                     />
                     <FaImages className="text-xl mb-2 opacity-80" />
                     <span className="font-medium">
@@ -960,7 +970,13 @@ export default function Sliders() {
                         Preview:
                       </p>
                       <img
-                        src={imagePreview || editing?.image?.url}
+                        src={
+                          imagePreview && (imagePreview.startsWith("blob:") || imagePreview.startsWith("http"))
+                            ? imagePreview
+                            : (imagePreview || editing?.image?.url || editing?.image || "").startsWith("http")
+                            ? (imagePreview || editing?.image?.url || editing?.image)
+                            : `${import.meta.env.VITE_API_URL.replace("/api", "")}${imagePreview || editing?.image?.url || editing?.image}`
+                        }
                         alt="Preview"
                         className="w-full max-h-48 object-cover rounded-xl border"
                         style={{ borderColor: themeColors.border }}

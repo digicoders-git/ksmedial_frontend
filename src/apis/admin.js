@@ -1,5 +1,7 @@
 // src/apis/admin.js
+import http from "./http";
 
 export const changePassword = async (payload) => {
-  return { message: "Password changed successfully" };
+  const { data } = await http.post("admin/change-password", payload);
+  return data;
 };

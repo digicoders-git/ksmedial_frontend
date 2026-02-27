@@ -15,8 +15,7 @@ const Referrals = () => {
   const fetchData = async () => {
     try {
       setRefreshing(true);
-      const adminData = JSON.parse(localStorage.getItem("admin") || "{}");
-      const userId = adminData.id || "global-admin";
+      const userId = "global-admin";
       
       const data = await getReferrals(userId);
       setReferrals(Array.isArray(data) ? data : []);
@@ -116,6 +115,7 @@ const Referrals = () => {
                   <th className="px-6 py-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Member Info</th>
                   <th className="px-6 py-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Contact Identity</th>
                   <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Growth Level</th>
+                  <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Referer</th>
                   <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
                   <th className="px-6 py-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Revenue</th>
                 </tr>
@@ -152,6 +152,11 @@ const Referrals = () => {
                             <span className="inline-block px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase border border-blue-100">
                                 Level {referral.level || 1}
                             </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                            <div className="text-[10px] font-black text-slate-700 uppercase">
+                                {referral.referredBy ? `${referral.referredBy.firstName} ${referral.referredBy.lastName}` : 'Direct'}
+                            </div>
                         </td>
                         <td className="px-6 py-4 text-center">
                             <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
