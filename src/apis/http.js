@@ -1,10 +1,14 @@
 // src/apis/http.js
 import axios from "axios";
 
+const rawBaseURL = import.meta.env.VITE_API_BASE_URL || "https://ksmedial-enventory-backend.onrender.com/api";
+
+export const BASE_URL = rawBaseURL.endsWith("/")
+  ? rawBaseURL
+  : `${rawBaseURL}/`;
+
 const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL.endsWith("/")
-    ? import.meta.env.VITE_API_BASE_URL
-    : `${import.meta.env.VITE_API_BASE_URL}/`,
+  baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
 

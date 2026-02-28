@@ -28,6 +28,7 @@ import {
   FaImage,
 } from "react-icons/fa";
 import Swal from "sweetalert2";
+import { formatImageURL } from "../utils/format";
 
 const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString("en-IN") : "-";
@@ -575,11 +576,7 @@ export default function Blogs() {
                 {/* Image */}
                 <div className="relative">
                   <img
-                    src={
-                      (blog.thumbnailImage || blog.coverImage || "").startsWith("http")
-                        ? (blog.thumbnailImage || blog.coverImage)
-                        : `${import.meta.env.VITE_API_URL.replace("/api", "")}${blog.thumbnailImage || blog.coverImage || ""}`
-                    }
+                    src={formatImageURL(blog.thumbnailImage || blog.coverImage)}
                     alt={blog.title}
                     className="w-full h-40 object-cover"
                   />
@@ -1283,11 +1280,7 @@ export default function Blogs() {
                         Cover Image
                       </p>
                       <img
-                        src={
-                          (viewBlog.coverImage || "").startsWith("http")
-                            ? viewBlog.coverImage
-                            : `${import.meta.env.VITE_API_URL.replace("/api", "")}${viewBlog.coverImage}`
-                        }
+                        src={formatImageURL(viewBlog.coverImage)}
                         alt={viewBlog.title}
                         className="w-full h-40 object-cover rounded-lg border"
                         style={{ borderColor: themeColors.border }}
@@ -1303,11 +1296,7 @@ export default function Blogs() {
                         Thumbnail
                       </p>
                       <img
-                        src={
-                          (viewBlog.thumbnailImage || "").startsWith("http")
-                            ? viewBlog.thumbnailImage
-                            : `${import.meta.env.VITE_API_URL.replace("/api", "")}${viewBlog.thumbnailImage}`
-                        }
+                        src={formatImageURL(viewBlog.thumbnailImage)}
                         alt={viewBlog.title}
                         className="w-32 h-20 object-cover rounded-lg border"
                         style={{ borderColor: themeColors.border }}

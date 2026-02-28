@@ -26,6 +26,7 @@ import { getCategories } from "../apis/categories";
 import { listOffers } from "../apis/offers"; // Added
 import { toast } from "sonner";
 import Swal from "sweetalert2";
+import { formatImageURL } from "../utils/format";
 
 export default function Products() {
   const { themeColors } = useTheme();
@@ -350,7 +351,7 @@ export default function Products() {
                           <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                                   {p.image ? (
-                                      <img src={`${import.meta.env.VITE_API_BASE_URL.replace("/api", "")}${p.image}`} className="w-full h-full object-cover" alt="" />
+                                      <img src={formatImageURL(p.image)} className="w-full h-full object-cover" alt="" />
                                   ) : (
                                       <FaImage className="text-slate-300 text-xs" />
                                   )}
@@ -466,7 +467,7 @@ export default function Products() {
             <div className="grid grid-cols-1 md:grid-cols-2">
               <div className="aspect-square bg-slate-50 flex items-center justify-center border-r border-slate-100">
                 {viewProduct.image ? (
-                  <img src={`${import.meta.env.VITE_API_BASE_URL.replace("/api", "")}${viewProduct.image}`} className="w-full h-full object-cover" alt="" />
+                  <img src={formatImageURL(viewProduct.image)} className="w-full h-full object-cover" alt="" />
                 ) : (
                   <FaCubes size={60} className="text-slate-200" />
                 )}

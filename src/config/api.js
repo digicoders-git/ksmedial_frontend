@@ -1,7 +1,7 @@
 // src/config/api.js - Centralized API Configuration
 
 // Backend API Base URL
-export const API_BASE_URL = import.meta.env.VITE_API_URL || "https://ksmedical-backend.onrender.com";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "https://ksmedial-enventory-backend.onrender.com";
 
 // API Endpoints
 export const API_ENDPOINTS = {

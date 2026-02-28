@@ -22,6 +22,7 @@ import {
 } from "react-icons/fa";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
+import { formatImageURL } from "../utils/format";
 
 // ---------- helpers ----------
 const fmtDate = (iso) =>
@@ -559,11 +560,7 @@ export default function Sliders() {
                     <td className="px-4 py-2">
                       {s.image?.url || typeof s.image === 'string' ? (
                         <img
-                          src={
-                            (s.image?.url || s.image).startsWith('http') 
-                              ? (s.image?.url || s.image) 
-                              : `${import.meta.env.VITE_API_URL.replace('/api', '')}${s.image?.url || s.image}`
-                          }
+                          src={formatImageURL(s.image?.url || s.image)}
                           alt={s.title}
                           className="h-16 w-32 object-cover rounded-lg border"
                           style={{ borderColor: themeColors.border }}
@@ -971,11 +968,9 @@ export default function Sliders() {
                       </p>
                       <img
                         src={
-                          imagePreview && (imagePreview.startsWith("blob:") || imagePreview.startsWith("http"))
+                          imagePreview && imagePreview.startsWith("blob:")
                             ? imagePreview
-                            : (imagePreview || editing?.image?.url || editing?.image || "").startsWith("http")
-                            ? (imagePreview || editing?.image?.url || editing?.image)
-                            : `${import.meta.env.VITE_API_URL.replace("/api", "")}${imagePreview || editing?.image?.url || editing?.image}`
+                            : formatImageURL(imagePreview || editing?.image?.url || editing?.image)
                         }
                         alt="Preview"
                         className="w-full max-h-48 object-cover rounded-xl border"

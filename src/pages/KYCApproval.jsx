@@ -3,6 +3,7 @@ import { FaEye, FaTimes, FaCheck, FaIdCard, FaHistory, FaCheckCircle, FaSyncAlt,
 import { toast } from "sonner";
 import { useTheme } from "../context/ThemeContext";
 import { kycAPI } from "../services/api";
+import { formatImageURL } from "../utils/format";
 
 const KYCApproval = () => {
   const { themeColors } = useTheme();
@@ -281,9 +282,9 @@ const KYCApproval = () => {
                                 { label: 'Selfie Proof', img: selectedKYC.kycData?.selfie }
                             ].map((doc, i) => (
                                 <div key={i} className="group relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 aspect-video cursor-zoom-in" 
-                                    onClick={() => window.open(doc.img, '_blank')}>
+                                    onClick={() => window.open(formatImageURL(doc.img), '_blank')}>
                                     {doc.img ? (
-                                        <img src={doc.img} alt={doc.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                        <img src={formatImageURL(doc.img)} alt={doc.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                     ) : (
                                         <div className="h-full flex items-center justify-center text-[10px] font-black text-slate-300 uppercase">Missing</div>
                                     )}
