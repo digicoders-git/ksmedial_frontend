@@ -19,9 +19,9 @@ import {
 
 // pages
 const Dashboard = lazy(() => import("../pages/Dashboard"));
-const Categories = lazy(() => import("../pages/Categories"));
-const Products = lazy(() => import("../pages/Products"));
-const Offers = lazy(() => import("../pages/Offers"));
+// const Categories = lazy(() => import("../pages/Categories"));
+// const Products = lazy(() => import("../pages/Products"));
+// const Offers = lazy(() => import("../pages/Offers"));
 const Orders = lazy(() => import("../pages/Orders"));
 const Enquiries = lazy(() => import("../pages/Enquiries"));
 const Sliders = lazy(() => import("../pages/Sliders"));
@@ -51,10 +51,7 @@ const routes = [
   { path: "/inventory-master", component: InventoryMaster, name: "Inventory Master", icon: FaWarehouse },
 
   // E-commerce
-  { path: "/categories", component: Categories, name: "Categories", icon: FaBox },
-  { path: "/products", component: Products, name: "Products", icon: FaBox },
   { path: "/shops", component: Shops, name: "Shops", icon: FaStore },
-  { path: "/offers", component: Offers, name: "Offers", icon: FaWallet },
   { path: "/orders", component: Orders, name: "Orders", icon: FaShoppingCart },
   { path: "/enquiries", component: Enquiries, name: "Enquiries", icon: FaEnvelopeOpenText },
   { path: "/sliders", component: Sliders, name: "Sliders", icon: FaImages },

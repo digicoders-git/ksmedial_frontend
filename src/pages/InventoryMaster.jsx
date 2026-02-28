@@ -37,7 +37,7 @@ export default function InventoryMaster() {
     try {
       setLoading(true);
       setError("");
-      const data = await listProducts();
+      const data = await listProducts({ scope: 'inventory' });
       const allProducts = Array.isArray(data) ? data : data.products || [];
       // Filter out demo/test data that doesn't have a valid SKU
       const validProducts = allProducts.filter(p => p.sku && p.sku.trim() !== "" && p.sku !== "-");
