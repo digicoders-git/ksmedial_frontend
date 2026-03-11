@@ -12,6 +12,10 @@ const Customers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const fetchData = async () => {
     try {
       setRefreshing(true);
@@ -33,6 +37,11 @@ const Customers = () => {
     fetchData();
   }, []);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sourceFilter]);
+
   const filteredCustomers = customers.filter(cust => {
     const fullName = `${cust.firstName} ${cust.lastName}`.toLowerCase();
     const email = (cust.email || "").toLowerCase();
@@ -45,6 +54,12 @@ const Customers = () => {
     const matchesSource = sourceFilter === "all" || cust.source === sourceFilter;
     return matchesSearch && matchesSource;
   });
+
+  // Pagination Calculation
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredCustomers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
 
   if (loading) {
     return (
@@ -117,7 +132,7 @@ const Customers = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredCustomers.length === 0 ? (
+                {currentItems.length === 0 ? (
                     <tr>
                         <td colSpan="5" className="px-6 py-20 text-center">
                             <div className="flex flex-col items-center gap-3 opacity-20">
@@ -127,7 +142,7 @@ const Customers = () => {
                         </td>
                     </tr>
                 ) : (
-                    filteredCustomers.map((cust) => (
+                    currentItems.map((cust) => (
                     <tr key={cust._id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-4">
                             <div className="flex items-center gap-4">
@@ -168,6 +183,68 @@ const Customers = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredCustomers.length)} of {filteredCustomers.length}
+              </div>
+              
+              <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rows:</span>
+                <select 
+                  className="bg-transparent text-[10px] font-black uppercase text-slate-600 focus:outline-none cursor-pointer"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value={5}>05</option>
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={20}>20</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all"
+                >
+                  Previous
+                </button>
+                
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-8 h-8 rounded-lg text-[10px] font-black border transition-all ${
+                      currentPage === i + 1 
+                      ? 'bg-primary border-primary text-white shadow-md' 
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
