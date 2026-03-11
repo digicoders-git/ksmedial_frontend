@@ -15,13 +15,14 @@ import {
   FaIdCard,
   FaStore,
   FaWarehouse,
+  FaTags,
 } from "react-icons/fa";
 
 // pages
 const Dashboard = lazy(() => import("../pages/Dashboard"));
 // const Categories = lazy(() => import("../pages/Categories"));
 // const Products = lazy(() => import("../pages/Products"));
-// const Offers = lazy(() => import("../pages/Offers"));
+const Offers = lazy(() => import("../pages/Offers"));
 const Orders = lazy(() => import("../pages/Orders"));
 const Enquiries = lazy(() => import("../pages/Enquiries"));
 const Sliders = lazy(() => import("../pages/Sliders"));
@@ -52,6 +53,7 @@ const routes = [
 
   // E-commerce
   { path: "/shops", component: Shops, name: "Shops", icon: FaStore },
+  { path: "/offers", component: Offers, name: "Offers", icon: FaTags },
   { path: "/orders", component: Orders, name: "Orders", icon: FaShoppingCart },
   { path: "/enquiries", component: Enquiries, name: "Enquiries", icon: FaEnvelopeOpenText },
   { path: "/sliders", component: Sliders, name: "Sliders", icon: FaImages },
