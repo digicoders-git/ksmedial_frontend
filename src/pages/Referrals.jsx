@@ -116,7 +116,6 @@ const Referrals = () => {
                   <th className="px-6 py-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Contact Identity</th>
                   <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Growth Level</th>
                   <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Referer</th>
-                  <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Type</th>
                   <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
                   <th className="px-6 py-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Revenue</th>
                 </tr>
@@ -156,17 +155,8 @@ const Referrals = () => {
                         </td>
                         <td className="px-6 py-4 text-center">
                             <div className="text-[10px] font-black text-slate-700 uppercase">
-                                {referral.referredBy ? `${referral.referredBy.firstName} ${referral.referredBy.lastName}` : (referral.shopName || 'Direct')}
+                                {referral.referredBy ? `${referral.referredBy.firstName} ${referral.referredBy.lastName}` : 'Direct'}
                             </div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                            <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${
-                                referral.source === 'Mobile App' 
-                                ? 'bg-purple-50 text-purple-600 border-purple-100' 
-                                : 'bg-orange-50 text-orange-600 border-orange-100'
-                            }`}>
-                                {referral.source || 'N/A'}
-                            </span>
                         </td>
                         <td className="px-6 py-4 text-center">
                             <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${

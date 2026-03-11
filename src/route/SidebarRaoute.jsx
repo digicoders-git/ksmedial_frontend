@@ -34,6 +34,7 @@ const InventoryMaster = lazy(() => import("../pages/InventoryMaster"));
 // Referal pages
 const ReferalDashboard = lazy(() => import("../pages/ReferalDashboard"));
 const Referrals = lazy(() => import("../pages/Referrals"));
+const Customers = lazy(() => import("../pages/Customers"));
 const Earnings = lazy(() => import("../pages/Earnings"));
 const Withdrawal = lazy(() => import("../pages/Withdrawal"));
 const KYCApproval = lazy(() => import("../pages/KYCApproval"));
@@ -41,6 +42,9 @@ const KYCApproval = lazy(() => import("../pages/KYCApproval"));
 const routes = [
   { path: "/dashboard", component: Dashboard, name: "Dashboard", icon: FaTachometerAlt },
   
+  // CRM
+  { path: "/customers", component: Customers, name: "Customers", icon: FaUsers },
+
   // Referal System
   { path: "/referal-dashboard", component: ReferalDashboard, name: "Referal Dashboard", icon: FaNetworkWired },
   { path: "/referrals", component: Referrals, name: "My Referrals", icon: FaUsers },
