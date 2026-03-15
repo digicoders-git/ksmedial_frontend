@@ -16,6 +16,7 @@ import {
   FaStore,
   FaWarehouse,
   FaTags,
+  FaPrescriptionBottleAlt,
 } from "react-icons/fa";
 
 // pages
@@ -30,6 +31,7 @@ const Blogs = lazy(() => import("../pages/Blogs"));
 const ChangePassword = lazy(() => import("../pages/ChangePassword"));
 const Shops = lazy(() => import("../pages/Shops"));
 const InventoryMaster = lazy(() => import("../pages/InventoryMaster"));
+const PrescriptionRequests = lazy(() => import("../pages/PrescriptionRequests"));
 
 // Referal pages
 const ReferalDashboard = lazy(() => import("../pages/ReferalDashboard"));
@@ -57,6 +59,7 @@ const routes = [
 
   // E-commerce
   { path: "/shops", component: Shops, name: "Shops", icon: FaStore },
+  { path: "/prescription-requests", component: PrescriptionRequests, name: "Prescription Rx", icon: FaPrescriptionBottleAlt },
   { path: "/offers", component: Offers, name: "Offers", icon: FaTags },
   { path: "/orders", component: Orders, name: "Orders", icon: FaShoppingCart },
   { path: "/enquiries", component: Enquiries, name: "Enquiries", icon: FaEnvelopeOpenText },

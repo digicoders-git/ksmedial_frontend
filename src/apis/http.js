@@ -4,8 +4,8 @@ import axios from "axios";
 const rawBaseURL = import.meta.env.VITE_API_BASE_URL || "https://ksmedial-enventory-backend.onrender.com/api";
 
 export const BASE_URL = rawBaseURL.endsWith("/")
-  ? rawBaseURL
-  : `${rawBaseURL}/`;
+  ? rawBaseURL.slice(0, -1)
+  : rawBaseURL;
 
 const http = axios.create({
   baseURL: BASE_URL,
