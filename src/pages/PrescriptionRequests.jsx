@@ -53,7 +53,7 @@ export default function PrescriptionRequests() {
   const fetchRequests = async () => {
     try {
       setRefreshing(true);
-      const { data } = await http.get("/orders/prescription/requests");
+      const { data } = await http.get("orders/prescription/requests");
       if (data.success) {
         setRequests(data.requests);
       }
@@ -87,7 +87,7 @@ export default function PrescriptionRequests() {
 
       if (result.isConfirmed) {
         setProcessing(true);
-        const { data } = await http.put(`/orders/prescription/requests/${id}/approve`);
+        const { data } = await http.put(`orders/prescription/requests/${id}/approve`);
         if (data.success) {
           toast.success("Prescription verified and order created.");
           setShowModal(false);
@@ -120,7 +120,7 @@ export default function PrescriptionRequests() {
       const formData = new FormData();
       formData.append("prescriptionImage", adminUploadImage);
 
-      const { data } = await http.put(`/orders/prescription/requests/${selectedRequest._id}/upload`, formData, {
+      const { data } = await http.put(`orders/prescription/requests/${selectedRequest._id}/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
 
