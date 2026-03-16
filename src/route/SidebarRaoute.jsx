@@ -25,9 +25,6 @@ const Dashboard = lazy(() => import("../pages/Dashboard"));
 // const Products = lazy(() => import("../pages/Products"));
 const Offers = lazy(() => import("../pages/Offers"));
 const Orders = lazy(() => import("../pages/Orders"));
-const Enquiries = lazy(() => import("../pages/Enquiries"));
-const Sliders = lazy(() => import("../pages/Sliders"));
-const Blogs = lazy(() => import("../pages/Blogs"));
 const ChangePassword = lazy(() => import("../pages/ChangePassword"));
 const Shops = lazy(() => import("../pages/Shops"));
 const InventoryMaster = lazy(() => import("../pages/InventoryMaster"));
@@ -62,9 +59,6 @@ const routes = [
   { path: "/prescription-requests", component: PrescriptionRequests, name: "Prescription Rx", icon: FaPrescriptionBottleAlt },
   { path: "/offers", component: Offers, name: "Offers", icon: FaTags },
   { path: "/orders", component: Orders, name: "Orders", icon: FaShoppingCart },
-  { path: "/enquiries", component: Enquiries, name: "Enquiries", icon: FaEnvelopeOpenText },
-  { path: "/sliders", component: Sliders, name: "Sliders", icon: FaImages },
-  { path: "/blogs", component: Blogs, name: "Blogs", icon: FaBlog },
   { path: "/change-password", component: ChangePassword, name: "Change Password", icon: FaKey },
 ];
 

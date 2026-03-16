@@ -9,7 +9,6 @@ import {
   FaBoxOpen,
   FaChartBar,
   FaSyncAlt,
-  FaEnvelopeOpenText,
   FaTags,
   FaNetworkWired,
   FaCoins,
@@ -132,7 +131,7 @@ export default function Dashboard() {
   const latestOrders = tables.latestOrders || [];
   const latestProducts = tables.latestProducts || [];
   const completedPutAways = tables.completedPutAways || [];
-  const recentEnquiries = tables.recentEnquiries || [];
+
   const activeOffers = tables.activeOffers || [];
 
   const ordersTrend = useMemo(
@@ -806,117 +805,6 @@ export default function Dashboard() {
 
           {/* Recent enquiries & active offers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Recent enquiries */}
-            <div
-              className="p-6 rounded-xl border"
-              style={{
-                backgroundColor: themeColors.surface,
-                borderColor: themeColors.border,
-              }}
-            >
-              <h2
-                className="text-lg font-semibold mb-4 flex items-center gap-2"
-                style={{ color: themeColors.text }}
-              >
-                <FaEnvelopeOpenText />
-                Recent Enquiries
-              </h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr
-                      style={{
-                        backgroundColor:
-                          themeColors.background + "30",
-                      }}
-                    >
-                      {[
-                        "Name",
-                        "Email",
-                        "Phone",
-                        "Subject",
-                        "Status",
-                        "Created",
-                      ].map((h) => (
-                        <th
-                          key={h}
-                          className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide"
-                          style={{ color: themeColors.text }}
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody
-                    className="divide-y"
-                    style={{ borderColor: themeColors.border }}
-                  >
-                    {recentEnquiries.map((e) => (
-                      <tr key={e._id}>
-                        <td
-                          className="px-4 py-2"
-                          style={{ color: themeColors.text }}
-                        >
-                          {e.name}
-                        </td>
-                        <td
-                          className="px-4 py-2 text-xs"
-                          style={{ color: themeColors.text }}
-                        >
-                          {e.email}
-                        </td>
-                        <td
-                          className="px-4 py-2 text-xs"
-                          style={{ color: themeColors.text }}
-                        >
-                          {e.phone}
-                        </td>
-                        <td
-                          className="px-4 py-2 text-xs"
-                          style={{ color: themeColors.text }}
-                        >
-                          {e.subject}
-                        </td>
-                        <td className="px-4 py-2 text-xs">
-                          <span
-                            className="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold"
-                            style={{
-                              backgroundColor: e.isRead
-                                ? themeColors.border
-                                : themeColors.primary + "10",
-                              color: e.isRead
-                                ? themeColors.text
-                                : themeColors.primary,
-                            }}
-                          >
-                            {e.status}
-                          </span>
-                        </td>
-                        <td
-                          className="px-4 py-2 text-xs opacity-70"
-                          style={{ color: themeColors.text }}
-                        >
-                          {fmtDate(e.createdAt)}
-                        </td>
-                      </tr>
-                    ))}
-                    {recentEnquiries.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={6}
-                          className="px-4 py-4 text-center text-sm"
-                          style={{ color: themeColors.text }}
-                        >
-                          No enquiries yet.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
             {/* Active offers */}
             <div
               className="p-6 rounded-xl border"
