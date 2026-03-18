@@ -98,6 +98,39 @@ export default function PrescriptionRequests() {
     }
   };
 
+  const handleReject = async (id) => {
+    try {
+      const result = await Swal.fire({
+        title: "Reject Prescription Request?",
+        input: "textarea",
+        inputLabel: "Reason for rejection (optional)",
+        inputPlaceholder: "Enter reason...",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#EF4444",
+        confirmButtonText: "Yes, Reject",
+        cancelButtonText: "Cancel",
+      });
+
+      if (result.isConfirmed) {
+        setProcessing(true);
+        const { data } = await http.put(`orders/prescription/requests/${id}/reject`, {
+          rejectionReason: result.value || "Rejected by admin"
+        });
+        if (data.success) {
+          toast.success("Request rejected.");
+          setShowModal(false);
+          fetchRequests();
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.message || "Reject failed");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const handleAdminUpload = async () => {
     if (!adminUploadImage) {
       toast.error("Please select an image first");
@@ -328,6 +361,14 @@ export default function PrescriptionRequests() {
                   style={{ borderColor: themeColors.border, color: themeColors.text }}
                 >
                   Close
+                </button>
+                <button 
+                  onClick={() => handleReject(selectedRequest._id)}
+                  disabled={processing}
+                  className="px-6 py-2 rounded-lg bg-red-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg disabled:opacity-30"
+                >
+                  {processing ? <FaSyncAlt className="animate-spin" /> : <FaTimesCircle />}
+                  Reject
                 </button>
                 <button 
                   onClick={() => handleApprove(selectedRequest._id)}
