@@ -47,6 +47,8 @@ export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const fetchOrders = async () => {
     try {
@@ -94,6 +96,17 @@ export default function Orders() {
       (o.orderNumber || "").toLowerCase().includes(q)
     );
   }, [orders, searchTerm, statusFilter]);
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return filteredOrders.slice(start, end);
+  }, [filteredOrders, currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, itemsPerPage]);
 
   const getStatusConfig = (status) => {
     const s = status?.toLowerCase() || "pending";
@@ -165,6 +178,20 @@ export default function Orders() {
                     {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
             </div>
+            <div className="h-8 w-[1px] bg-slate-100 mx-2" />
+            <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Per Page:</span>
+                <select 
+                    value={itemsPerPage} 
+                    onChange={e => setItemsPerPage(Number(e.target.value))}
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1 text-[10px] font-black uppercase tracking-widest focus:outline-none cursor-pointer"
+                >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                </select>
+            </div>
         </div>
 
         {/* Table Content */}
@@ -185,7 +212,7 @@ export default function Orders() {
                         ) : filteredOrders.length === 0 ? (
                             <tr><td colSpan="5" className="py-20 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">No active shipments found</td></tr>
                         ) : (
-                            filteredOrders.map(o => {
+                            paginatedOrders.map(o => {
                                 const config = getStatusConfig(o.status);
                                 return (
                                     <tr key={o._id || o.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -212,13 +239,9 @@ export default function Orders() {
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="inline-flex flex-col items-center">
-                                                <select 
-                                                    value={o.status || 'pending'} 
-                                                    onChange={e => handleUpdate(o._id || o.id, { status: e.target.value })}
-                                                    className={`px-3 py-1.5 rounded-lg border ${config.bg} ${config.text} ${config.border} text-[9px] font-black uppercase tracking-widest focus:outline-none cursor-pointer hover:shadow-md transition-all`}
-                                                >
-                                                    {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                                                </select>
+                                                <div className={`px-3 py-1.5 rounded-lg border ${config.bg} ${config.text} ${config.border} text-[9px] font-black uppercase tracking-widest`}>
+                                                    {o.status || 'pending'}
+                                                </div>
                                                 <div 
                                                     onClick={() => handleUpdate(o._id || o.id, { paymentStatus: o.paymentStatus === 'paid' ? 'pending' : 'paid' })}
                                                     className={`mt-1 flex items-center gap-1 text-[8px] font-bold cursor-pointer hover:opacity-75 ${o.paymentStatus === 'paid' ? 'text-emerald-500' : 'text-slate-400'}`}
@@ -243,6 +266,58 @@ export default function Orders() {
                     </tbody>
                 </table>
             </div>
+            
+            {/* Pagination */}
+            {!loading && filteredOrders.length > 0 && (
+                <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        Showing {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredOrders.length)} of {filteredOrders.length} orders
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold uppercase disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 transition-all"
+                        >
+                            Previous
+                        </button>
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) {
+                                    pageNum = i + 1;
+                                } else if (currentPage <= 3) {
+                                    pageNum = i + 1;
+                                } else if (currentPage >= totalPages - 2) {
+                                    pageNum = totalPages - 4 + i;
+                                } else {
+                                    pageNum = currentPage - 2 + i;
+                                }
+                                return (
+                                    <button
+                                        key={pageNum}
+                                        onClick={() => setCurrentPage(pageNum)}
+                                        className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${
+                                            currentPage === pageNum
+                                                ? 'bg-slate-800 text-white shadow-lg'
+                                                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
+                                        }`}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <button 
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage >= totalPages}
+                            className="px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold uppercase disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 transition-all"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
 
         {/* View Details Modal */}

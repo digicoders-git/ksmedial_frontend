@@ -305,9 +305,41 @@ export default function Shops() {
                     <FaStore />
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => handleView(shop)} className="p-2 rounded-lg hover:bg-black/5 transition-colors" style={{ color: themeColors.primary }} title="View Details"><FaEye /></button>
-                    <button onClick={() => handleEdit(shop)} className="p-2 rounded-lg hover:bg-black/5 transition-colors" style={{ color: themeColors.text }} title="Edit"><FaEdit /></button>
-                    <button onClick={() => handleDelete(shop)} className="p-2 rounded-lg hover:bg-black/5 transition-colors" style={{ color: themeColors.danger }} title="Delete"><FaTrash /></button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleView(shop);
+                      }} 
+                      className="p-2 rounded-lg hover:bg-black/5 transition-colors" 
+                      style={{ color: themeColors.primary }} 
+                      title="View Details"
+                    >
+                      <FaEye />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(shop);
+                      }} 
+                      className="p-2 rounded-lg hover:bg-black/5 transition-colors" 
+                      style={{ color: themeColors.text }} 
+                      title="Edit"
+                    >
+                      <FaEdit />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('Delete clicked:', shop.shopName);
+                        handleDelete(shop);
+                      }} 
+                      disabled={saving}
+                      className="p-2 rounded-lg hover:bg-black/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                      style={{ color: themeColors.danger }} 
+                      title="Delete"
+                    >
+                      <FaTrash />
+                    </button>
                   </div>
                </div>
 

@@ -71,6 +71,18 @@ export default function PrescriptionRequests() {
 
   const handleApprove = async (id) => {
     try {
+      // Check if prescription image exists
+      if (!selectedRequest?.prescriptionImage) {
+        await Swal.fire({
+          title: "Image Required",
+          text: "Please upload a prescription image before approving.",
+          icon: "warning",
+          confirmButtonColor: themeColors.primary,
+          confirmButtonText: "OK",
+        });
+        return;
+      }
+
       const result = await Swal.fire({
         title: "Approve Prescription?",
         text: "This will confirm the order for the user.",
