@@ -126,9 +126,11 @@ const Customers = () => {
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="px-6 py-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Personal Info</th>
                   <th className="px-6 py-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Identity Details</th>
+                  <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Wallet Balance</th>
                   <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Source</th>
                   <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Associated Shop</th>
                   <th className="px-6 py-4 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Account Type</th>
+
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -159,6 +161,12 @@ const Customers = () => {
                             <div className="text-[12px] font-black text-slate-700">{cust.phone}</div>
                             <div className="text-[10px] font-bold text-slate-400 lowercase">{cust.email}</div>
                         </td>
+                        <td className="px-6 py-4 text-center">
+                            <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-green-50 border border-green-100 font-black text-green-700 text-xs tracking-tighter">
+                                ₹{(cust.walletBalance || 0).toFixed(2)}
+                            </div>
+                        </td>
+
                         <td className="px-6 py-4 text-center">
                             <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${
                                 cust.source === 'Mobile App' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-orange-100 text-orange-700 border-orange-200'
